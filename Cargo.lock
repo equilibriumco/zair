@@ -1182,6 +1182,7 @@ dependencies = [
 [[package]]
 name = "halo2_gadgets"
 version = "0.3.1"
+source = "git+https://github.com/eigerco/halo2#29a61614e7d96a91940c7690e8021673baf25b30"
 dependencies = [
  "arrayvec",
  "bitvec",
@@ -1894,6 +1895,7 @@ checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 [[package]]
 name = "orchard"
 version = "0.11.0"
+source = "git+https://github.com/eigerco/orchard#e7a562b7d5eb81a3ca52cb33d1d3d8b40f5162ef"
 dependencies = [
  "aes",
  "bitvec",
@@ -2475,6 +2477,7 @@ checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
 [[package]]
 name = "sapling-crypto"
 version = "0.5.0"
+source = "git+https://github.com/eigerco/sapling-crypto#6ab01dd69adaa44d71ab86c21c2fece6ecc86e20"
 dependencies = [
  "aes",
  "bellman",

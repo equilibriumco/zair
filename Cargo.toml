@@ -94,9 +94,9 @@ zeroize = "1.8"
 zip32 = "0.2.1"
 
 [patch.crates-io]
-halo2_gadgets = { path = "./.patched-halo2-gadgets" }
-orchard = { path = "./.patched-orchard" }
-sapling-crypto = { path = "./.patched-sapling-crypto" }
+halo2_gadgets = { git = "https://github.com/eigerco/halo2" }
+orchard = { git = "https://github.com/eigerco/orchard" }
+sapling-crypto = { git = "https://github.com/eigerco/sapling-crypto" }
 
 [workspace.lints.rust]
 missing_docs = { level = "warn", priority = -1 }
