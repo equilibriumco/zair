@@ -4,6 +4,7 @@
 
 use bellman::gadgets::multipack;
 use bellman::groth16::{PreparedVerifyingKey, Proof, verify_proof};
+pub use bellman::groth16::{VerifyingKey, prepare_verifying_key};
 use bls12_381::Bls12;
 
 pub use crate::error::ClaimProofError;

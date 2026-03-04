@@ -39,6 +39,7 @@ impl From<zair_core::schema::config::ValueCommitmentScheme> for ValueCommitmentS
 /// The caller generates witness randomness (`alpha`, `rcv`, `rcv_sha256`) before calling
 /// the prover. The prover deterministically computes derived public values (`rk`, `cv`,
 /// `cv_sha256`) for inclusion in the proof output.
+#[cfg(feature = "prove")]
 #[derive(Debug, Clone)]
 pub struct ClaimProofInputs {
     /// Diversifier (11 bytes)
