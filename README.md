@@ -18,17 +18,17 @@ See the [Introduction](https://eigerco.github.io/zair/introduction.html) for mor
 
 ## Crates
 
-| Crate | Description |
-| --- | --- |
-| `zair-cli` | Primary `zair` CLI binary tool |
-| `zair-sdk` | The SDK and entrypoint for `zair` airdrops, used by the CLI |
-| `zair-core` | Core crate with shared types, config and schemas |
-| `zair-nonmembership` | Non-membership Merkle-tree primitive |
-| `zair-scan` | Lightwalletd gRPC client and chain scanning |
-| `zair-sapling-proofs` | Sapling proving and verification |
-| `zair-sapling-circuit` | Sapling claim circuit (Bellman/Groth16) |
-| `zair-orchard-proofs` | Orchard proving and verification |
-| `zair-orchard-circuit` | Orchard claim circuit (Halo2) |
+| Crate                  | Description                                                 |
+| ---------------------- | ----------------------------------------------------------- |
+| `zair-cli`             | Primary `zair` CLI binary tool                              |
+| `zair-sdk`             | The SDK and entrypoint for `zair` airdrops, used by the CLI |
+| `zair-core`            | Core crate with shared types, config and schemas            |
+| `zair-nonmembership`   | Non-membership Merkle-tree primitive                        |
+| `zair-scan`            | Lightwalletd gRPC client and chain scanning                 |
+| `zair-sapling-proofs`  | Sapling proving and verification                            |
+| `zair-sapling-circuit` | Sapling claim circuit (Bellman/Groth16)                     |
+| `zair-orchard-proofs`  | Orchard proving and verification                            |
+| `zair-orchard-circuit` | Orchard claim circuit (Halo2)                               |
 
 ## Getting started
 

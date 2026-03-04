@@ -27,11 +27,11 @@ Outside the circuit:
 
 Each pool has two crates and one or more patched upstream dependencies:
 
-|                   | Sapling                   | Orchard                                          |
-| ----------------- | ------------------------- | ------------------------------------------------ |
-| Circuit           | `zair-sapling-circuit`    | `zair-orchard-circuit`                           |
-| Prover / verifier | `zair-sapling-proofs`     | `zair-orchard-proofs`                            |
-| Patched deps      | `.patched-sapling-crypto` | `.patched-orchard`, `.patched-halo2-gadgets`     |
+|                   | Sapling                | Orchard                    |
+| ----------------- | ---------------------- | -------------------------- |
+| Circuit           | `zair-sapling-circuit` | `zair-orchard-circuit`     |
+| Prover / verifier | `zair-sapling-proofs`  | `zair-orchard-proofs`      |
+| Patched deps      | `sapling-crypto`       | `orchard`, `halo2-gadgets` |
 
 The patches expose internal APIs (nullifier derivation with configurable domain, Pedersen/Sinsemilla
 hash internals, key types) so that host-side code can compute the same airdrop nullifiers and

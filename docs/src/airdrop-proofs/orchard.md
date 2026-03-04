@@ -9,8 +9,8 @@ Implementation:
 
 Patched dependencies:
 
-- `.patched-orchard/` via `nix/airdrop-orchard-nullifier.patch`
-- `.patched-halo2-gadgets/` via `nix/airdrop-halo2-gadgets-sha256.patch`
+- `orchard/` from [https://github.com/eigerco/orchard](/url)
+- `halo2-gadgets/` from [https://github.com/eigerco/halo2](/url)
 
 ## Proof statement
 

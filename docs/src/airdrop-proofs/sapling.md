@@ -9,7 +9,7 @@ Implementation:
 
 Patched dependency:
 
-- `.patched-sapling-crypto/` via `nix/airdrop-sapling-nullifier.patch`
+- `sapling-crypto/` from [https://github.com/eigerco/sapling-crypto](/url)
 
 ## Proof statement
 
