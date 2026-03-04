@@ -12,6 +12,12 @@
       # Prefetch cargo dependencies for sandbox builds
       cargoDeps = pkgs.rustPlatform.importCargoLock {
         lockFile = ../Cargo.lock;
+        # Forked crates.
+        outputHashes = {
+          "halo2_gadgets-0.3.1" = "sha256-+1tMFB2w70mJPAiYJboO5rtu0C+rUuPi9qvHf7kk04U=";
+          "orchard-0.11.0" = "sha256-jVoOLFAQy1BtaOccQbb+dhrlcX0Jyqy65twuo0d0QlM=";
+          "sapling-crypto-0.5.0" = "sha256-UwxRBXEhvlcar4g3mKAirke3/oyFBI9+DHPVpLeb2bQ=";
+        };
       };
 
       # Wrapper script for cargo-audit that skips in Nix sandbox (no network access)
@@ -29,10 +35,6 @@
       pre-commit = {
         check.enable = true;
         settings = {
-          excludes = [
-            "vendor/.*"
-          ];
-
           settings.rust.check.cargoDeps = cargoDeps;
           hooks = {
             # markdown (config in .markdownlint.json)

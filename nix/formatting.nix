@@ -10,7 +10,6 @@
         settings.global.excludes = [
           "**/*.txt"
           "**/*.gitignore"
-          "vendor/**" # Avoid formatting vendored sources.
         ];
         programs = {
           nixfmt.enable = true;
