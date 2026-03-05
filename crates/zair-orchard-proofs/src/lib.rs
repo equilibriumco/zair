@@ -27,7 +27,7 @@ pub use prover::generate_claim_proof;
 pub mod verifier;
 
 #[cfg(feature = "verify")]
-pub use verifier::verify_claim_proof_output;
+pub use verifier::*;
 
 #[cfg(test)]
 mod tests;

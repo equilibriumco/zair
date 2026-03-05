@@ -38,4 +38,7 @@ pub enum ClaimProofError {
     /// Halo2 params `k` does not match the configured scheme.
     #[error("Orchard params k mismatch: expected {expected}, got {actual}")]
     InvalidParamsK { expected: u32, actual: u32 },
+    /// Failed to read params from bytes.
+    #[error("Failed to read Orchard params")]
+    ReadParams,
 }
