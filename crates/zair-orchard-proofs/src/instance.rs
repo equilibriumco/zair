@@ -17,11 +17,13 @@ pub(crate) fn base_from_repr(bytes: [u8; 32]) -> Result<pallas::Base, ClaimProof
         .ok_or(ClaimProofError::NonCanonicalBase)
 }
 
+#[cfg(feature = "prove")]
 pub(crate) fn scalar_from_repr(bytes: [u8; 32]) -> Result<pallas::Scalar, ClaimProofError> {
     Option::<pallas::Scalar>::from(pallas::Scalar::from_repr(bytes))
         .ok_or(ClaimProofError::NonCanonicalScalar)
 }
 
+#[cfg(feature = "prove")]
 pub(crate) fn target_id_slice(
     target_id: &[u8; 32],
     target_id_len: u8,
@@ -33,6 +35,7 @@ pub(crate) fn target_id_slice(
     Ok(target)
 }
 
+#[cfg(feature = "prove")]
 pub(crate) fn point_from_bytes(bytes: [u8; 32]) -> Result<pallas::Affine, ClaimProofError> {
     let p = Option::<pallas::Point>::from(pallas::Point::from_bytes(&bytes))
         .ok_or(ClaimProofError::InvalidPoint)?;
