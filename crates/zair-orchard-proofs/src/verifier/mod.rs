@@ -1,3 +1,5 @@
+use std::io::Cursor;
+
 use halo2_proofs::plonk::{SingleVerifier, verify_proof};
 use halo2_proofs::poly::commitment::Params;
 use halo2_proofs::transcript::Blake2bRead;
@@ -7,6 +9,16 @@ use crate::error::ClaimProofError;
 use crate::instance::to_instance;
 use crate::keys::keys_for;
 use crate::types::{ClaimProofOutput, ValueCommitmentScheme};
+
+// NOTE: This is public-facing adaption of `[read_params](zair-sdk::commands::orchard_params)`.
+/// Loads Orchard parameters from bytes.
+///
+/// # Errors
+/// Returns an error if the bytes fail to decode.
+pub fn read_params_from_bytes(bytes: &[u8]) -> Result<Params<vesta::Affine>, ClaimProofError> {
+    let mut cursor = Cursor::new(bytes);
+    Params::<vesta::Affine>::read(&mut cursor).map_err(|_| ClaimProofError::ReadParams)
+}
 
 /// Verify an Orchard claim proof with the given public inputs.
 ///
