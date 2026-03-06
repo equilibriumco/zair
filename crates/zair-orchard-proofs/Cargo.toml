@@ -15,7 +15,7 @@ prove = []
 ff = { workspace = true }
 group = { workspace = true }
 halo2_proofs = { workspace = true }
-orchard = { workspace = true, features = ["circuit"] }
+orchard = { workspace = true, features = ["circuit", "std"] }
 pasta_curves = { workspace = true }
 thiserror = { workspace = true }
 zair-core = { workspace = true }
