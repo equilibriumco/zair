@@ -41,7 +41,6 @@ zair-scan = { workspace = true }
 
 bellman = { workspace = true }
 bip39 = { workspace = true }
-blake2b_simd = { workspace = true }
 bls12_381 = { workspace = true }
 group = { workspace = true }
 halo2_proofs = { workspace = true }

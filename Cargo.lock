@@ -3877,7 +3877,6 @@ version = "0.1.0"
 dependencies = [
  "bellman",
  "bip39",
- "blake2b_simd",
  "bls12_381",
  "eyre",
  "group",
