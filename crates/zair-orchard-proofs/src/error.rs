@@ -41,4 +41,13 @@ pub enum ClaimProofError {
     /// Failed to read params from bytes.
     #[error("Failed to read Orchard params")]
     ReadParams,
+    /// Failed decode signature verification key.
+    #[error("Invalid rk encoding")]
+    InvalidRkEncoding,
+    /// Failed to verify spend-auth signature.
+    #[error("Invalid Orchard spend-auth signature")]
+    InvalidSignature,
+    /// Orchard proof length exceeds [`u32::MAX`].
+    #[error("Orchard proof length exceeds u32::MAX")]
+    ProofLengthExceedsU32,
 }

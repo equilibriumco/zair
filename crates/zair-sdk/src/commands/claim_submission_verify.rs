@@ -4,16 +4,14 @@ use std::path::PathBuf;
 
 use eyre::{Context as _, ContextCompat as _, ensure};
 use tracing::{info, warn};
-use zair_core::base::Pool;
+use zair_core::base::{Pool, signature_digest};
 use zair_core::schema::config::AirdropConfiguration;
 use zair_core::schema::submission::ClaimSubmission;
 
 use super::nullifier_uniqueness::ensure_unique_airdrop_nullifiers;
-use super::signature_digest::{
-    hash_orchard_signed_claim_proof, hash_sapling_signed_claim_proof, signature_digest,
-};
-use super::submission_auth::{orchard, sapling};
+use super::signature_digest::hash_sapling_signed_claim_proof;
 use super::submission_messages::resolve_message_hashes;
+use crate::commands::signature_digest::hash_orchard_signed_claim_proof;
 
 /// Verify spend-auth signatures in a submission package.
 ///
@@ -117,13 +115,15 @@ pub async fn verify_claim_submission_signature(
             .context("Sapling target_id must be present for Sapling signature verification")?;
         let digest = signature_digest(
             Pool::Sapling,
-            target_id,
+            target_id.as_bytes(),
             &entry.proof_hash,
             &entry.message_hash,
         )?;
 
-        let is_valid = sapling::verify_signature(entry.rk, entry.spend_auth_sig, &digest)
-            .with_context(|| format!("Invalid Sapling signature encoding at index {idx}"))?;
+        let is_valid =
+            zair_sapling_proofs::verify_signature(entry.rk, entry.spend_auth_sig, &digest)
+                .with_context(|| format!("Invalid Sapling signature encoding at index {idx}"))
+                .is_ok();
         if is_valid {
             info!(
                 index = idx,
@@ -165,13 +165,15 @@ pub async fn verify_claim_submission_signature(
             .context("Orchard target_id must be present for Orchard signature verification")?;
         let digest = signature_digest(
             Pool::Orchard,
-            target_id,
+            target_id.as_bytes(),
             &entry.proof_hash,
             &entry.message_hash,
         )?;
 
-        let is_valid = orchard::verify_signature(entry.rk, entry.spend_auth_sig, &digest)
-            .with_context(|| format!("Invalid Orchard signature encoding at index {idx}"))?;
+        let is_valid =
+            zair_orchard_proofs::verify_signature(entry.rk, entry.spend_auth_sig, &digest)
+                .with_context(|| format!("Invalid Orchard signature encoding at index {idx}"))
+                .is_ok();
         if is_valid {
             info!(
                 index = idx,
@@ -207,14 +209,14 @@ mod tests {
 
     use serde::Serialize;
     use tempfile::tempdir;
-    use zair_core::base::Nullifier;
+    use zair_core::base::{Nullifier, hash_message};
     use zair_core::schema::config::{
         AirdropConfiguration, AirdropNetwork, SaplingSnapshot, ValueCommitmentScheme,
     };
     use zair_core::schema::submission::{ClaimSubmission, OrchardSignedClaim, SaplingSignedClaim};
 
     use super::*;
-    use crate::commands::signature_digest::{hash_message, hash_sapling_signed_claim_proof};
+    use crate::commands::signature_digest::hash_sapling_signed_claim_proof;
 
     fn write_json<T: Serialize>(path: &Path, value: &T) {
         let bytes = serde_json::to_vec_pretty(value).expect("serialize json");

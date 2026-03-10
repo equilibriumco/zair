@@ -3,7 +3,7 @@
 use eyre::{ContextCompat as _, ensure};
 use group::ff::PrimeField as _;
 use orchard::keys::SpendAuthorizingKey;
-use orchard::primitives::redpallas::{Signature, SpendAuth, VerificationKey};
+use orchard::primitives::redpallas::{SpendAuth, VerificationKey};
 use pasta_curves::pallas;
 use zcash_keys::keys::UnifiedSpendingKey;
 use zcash_protocol::consensus::Network;
@@ -60,16 +60,4 @@ pub fn sign_claim(
 
     let signature = signing_key.sign(rand_core::OsRng, digest);
     Ok((&signature).into())
-}
-
-/// Verify an Orchard spend-auth signature against a submission digest.
-pub fn verify_signature(
-    rk_bytes: [u8; 32],
-    spend_auth_sig: [u8; 64],
-    digest: &[u8; 32],
-) -> eyre::Result<bool> {
-    let rk = VerificationKey::<SpendAuth>::try_from(rk_bytes)
-        .map_err(|_| eyre::eyre!("Invalid Orchard rk encoding"))?;
-    let signature = Signature::<SpendAuth>::from(spend_auth_sig);
-    Ok(rk.verify(digest, &signature).is_ok())
 }

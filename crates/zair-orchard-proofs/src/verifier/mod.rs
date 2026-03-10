@@ -3,12 +3,17 @@ use std::io::Cursor;
 use halo2_proofs::plonk::{SingleVerifier, verify_proof};
 use halo2_proofs::poly::commitment::Params;
 use halo2_proofs::transcript::Blake2bRead;
+use orchard::primitives::redpallas::{Signature, SpendAuth, VerificationKey};
 use pasta_curves::vesta;
+use zair_core::base::{Nullifier, hash_bytes};
 
 use crate::error::ClaimProofError;
 use crate::instance::to_instance;
 use crate::keys::keys_for;
 use crate::types::{ClaimProofOutput, ValueCommitmentScheme};
+
+/// Domain tag for Orchard proof-hash preimages.
+pub const ORCHARD_PROOF_TAG: &[u8; 21] = b"ZAIR_ORCHARD_PROOF_V1";
 
 // NOTE: This is public-facing adaption of `[read_params](zair-sdk::commands::orchard_params)`.
 /// Loads Orchard parameters from bytes.
@@ -105,4 +110,52 @@ pub fn verify_claim_proof_output(
         value_commitment_scheme,
         target_id,
     )
+}
+
+/// Verify an Orchard spend-auth signature against a submission digest.
+pub fn verify_signature(
+    rk_bytes: [u8; 32],
+    spend_auth_sig: [u8; 64],
+    digest: &[u8; 32],
+) -> Result<(), ClaimProofError> {
+    let rk = VerificationKey::<SpendAuth>::try_from(rk_bytes)
+        .map_err(|_| ClaimProofError::InvalidRkEncoding)?;
+    let signature = Signature::<SpendAuth>::from(spend_auth_sig);
+
+    rk.verify(digest, &signature)
+        .map_err(|_| ClaimProofError::InvalidSignature)
+}
+
+/// Hashes and returns the digest for Orchard proof fields.
+pub fn hash_orchard_proof_fields(
+    zkproof: &[u8],
+    rk: &[u8; 32],
+    cv: Option<[u8; 32]>,
+    cv_sha256: Option<[u8; 32]>,
+    airdrop_nullifier: Nullifier,
+) -> Result<[u8; 32], ClaimProofError> {
+    let mut preimage = Vec::new();
+    preimage.extend_from_slice(ORCHARD_PROOF_TAG);
+    let proof_len =
+        u32::try_from(zkproof.len()).map_err(|_| ClaimProofError::ProofLengthExceedsU32)?;
+    preimage.extend_from_slice(&proof_len.to_le_bytes());
+    preimage.extend_from_slice(zkproof);
+    preimage.extend_from_slice(rk);
+    match cv {
+        Some(bytes) => {
+            preimage.push(1);
+            preimage.extend_from_slice(&bytes);
+        }
+        None => preimage.push(0),
+    }
+    match cv_sha256 {
+        Some(bytes) => {
+            preimage.push(1);
+            preimage.extend_from_slice(&bytes);
+        }
+        None => preimage.push(0),
+    }
+    let nf: [u8; 32] = airdrop_nullifier.into();
+    preimage.extend_from_slice(&nf);
+    Ok(hash_bytes(&preimage))
 }

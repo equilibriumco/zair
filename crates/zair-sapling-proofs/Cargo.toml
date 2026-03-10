@@ -23,6 +23,7 @@ prove = [
 bellman = { workspace = true }
 bls12_381 = { workspace = true }
 jubjub = { workspace = true }
+redjubjub = { workspace = true }
 thiserror = { workspace = true }
 
 zair-core = { workspace = true }

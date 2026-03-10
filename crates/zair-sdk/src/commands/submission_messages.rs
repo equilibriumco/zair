@@ -5,9 +5,7 @@ use std::path::PathBuf;
 
 use eyre::{Context as _, ensure};
 use serde::{Deserialize, Serialize};
-use zair_core::base::Nullifier;
-
-use super::signature_digest::hash_message;
+use zair_core::base::{Nullifier, hash_message};
 
 /// One per-claim message-file assignment.
 #[derive(Debug, Clone, Serialize, Deserialize)]

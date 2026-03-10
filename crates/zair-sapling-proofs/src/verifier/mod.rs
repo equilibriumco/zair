@@ -6,11 +6,15 @@ use bellman::gadgets::multipack;
 use bellman::groth16::{PreparedVerifyingKey, Proof, verify_proof};
 pub use bellman::groth16::{VerifyingKey, prepare_verifying_key};
 use bls12_381::Bls12;
+use zair_core::base::{Nullifier, hash_bytes};
 
 pub use crate::error::ClaimProofError;
 pub use crate::types::{
     ClaimProofOutput, GROTH_PROOF_SIZE, GrothProofBytes, ValueCommitmentScheme,
 };
+
+/// Domain tag for Sapling proof-hash preimages.
+pub const SAPLING_PROOF_TAG: &[u8; 21] = b"ZAIR_SAPLING_PROOF_V1";
 
 /// Errors that can occur during claim proof verification.
 #[derive(Debug, thiserror::Error)]
@@ -42,6 +46,12 @@ pub enum VerificationError {
     /// Multipack produced unexpected number of elements
     #[error("Multipack produced {0} elements, expected 2")]
     UnexpectedMultipackLength(usize),
+    /// Invalid rk encoding
+    #[error("Invalid rk encoding")]
+    InvalidRkEncoding,
+    /// Failed to verify spend-auth signature
+    #[error("Failed to verify spend-auth signature")]
+    InvalidSpendAuthSig,
 }
 
 /// Public inputs for claim proof verification.
@@ -262,6 +272,54 @@ pub fn verify_claim_proof_output(
         &proof_output.airdrop_nullifier,
         nullifier_gap_root,
     )
+}
+
+/// Verify a Sapling spend-auth signature against a submission digest.
+///
+/// # Errors
+/// Returns an error if the signature is invalid or the rk cannot be decoded.
+pub fn verify_signature(
+    rk_bytes: [u8; 32],
+    spend_auth_sig: [u8; 64],
+    digest: &[u8; 32],
+) -> Result<(), VerificationError> {
+    let rk = redjubjub::VerificationKey::<redjubjub::SpendAuth>::try_from(rk_bytes)
+        .map_err(|_| VerificationError::InvalidRkEncoding)?;
+    let signature = redjubjub::Signature::from(spend_auth_sig);
+    rk.verify(digest, &signature)
+        .map_err(|_| VerificationError::InvalidSpendAuthSig)
+}
+
+/// Hashes and returns the digest for Sapling proof fields.
+#[must_use]
+pub fn hash_sapling_proof_fields(
+    zkproof: &[u8; 192],
+    rk: &[u8; 32],
+    cv: Option<[u8; 32]>,
+    cv_sha256: Option<[u8; 32]>,
+    airdrop_nullifier: Nullifier,
+) -> [u8; 32] {
+    let mut preimage = Vec::new();
+    preimage.extend_from_slice(SAPLING_PROOF_TAG);
+    preimage.extend_from_slice(zkproof);
+    preimage.extend_from_slice(rk);
+    match cv {
+        Some(bytes) => {
+            preimage.push(1);
+            preimage.extend_from_slice(&bytes);
+        }
+        None => preimage.push(0),
+    }
+    match cv_sha256 {
+        Some(bytes) => {
+            preimage.push(1);
+            preimage.extend_from_slice(&bytes);
+        }
+        None => preimage.push(0),
+    }
+    let nf: [u8; 32] = airdrop_nullifier.into();
+    preimage.extend_from_slice(&nf);
+    hash_bytes(&preimage)
 }
 
 // ============================================================================

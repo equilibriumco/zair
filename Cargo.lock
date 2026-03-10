@@ -3748,12 +3748,14 @@ dependencies = [
 name = "zair-core"
 version = "0.1.0"
 dependencies = [
+ "blake2b_simd",
  "bytemuck",
  "schemars 1.2.1",
  "serde",
  "serde_json",
  "serde_with",
  "sha2 0.10.9",
+ "thiserror 2.0.18",
  "zip32",
 ]
 
@@ -3828,6 +3830,7 @@ dependencies = [
  "incrementalmerkletree",
  "jubjub",
  "rand 0.8.5",
+ "redjubjub",
  "sapling-crypto",
  "thiserror 2.0.18",
  "zair-core",

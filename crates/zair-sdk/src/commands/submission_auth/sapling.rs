@@ -74,15 +74,3 @@ pub fn sign_claim(
     let signature = signing_key.sign(rand_core::OsRng, digest);
     Ok(signature.into())
 }
-
-/// Verify a Sapling spend-auth signature against a submission digest.
-pub fn verify_signature(
-    rk_bytes: [u8; 32],
-    spend_auth_sig: [u8; 64],
-    digest: &[u8; 32],
-) -> eyre::Result<bool> {
-    let rk = redjubjub::VerificationKey::<redjubjub::SpendAuth>::try_from(rk_bytes)
-        .map_err(|_| eyre::eyre!("Invalid Sapling rk encoding"))?;
-    let signature = redjubjub::Signature::from(spend_auth_sig);
-    Ok(rk.verify(digest, &signature).is_ok())
-}
