@@ -10,6 +10,9 @@ build-dir = "book"
 [output.html]
 additional-css = ["mdbook-admonish.css"]
 
+[output.html.playground]
+runnable = false
+
 [preprocessor.katex]
 after = ["links"]
 
