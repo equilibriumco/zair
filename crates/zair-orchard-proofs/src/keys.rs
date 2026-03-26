@@ -13,7 +13,7 @@ use crate::error::ClaimProofError;
 use crate::types::ValueCommitmentScheme;
 
 #[derive(Debug)]
-pub(crate) struct Keys {
+pub struct Keys {
     pub(crate) vk: VerifyingKey<vesta::Affine>,
     #[cfg_attr(feature = "verify", allow(dead_code))]
     pub(crate) pk: plonk::ProvingKey<vesta::Affine>,
@@ -51,7 +51,7 @@ struct CacheKey {
     target_id_len: u8,
 }
 
-pub(crate) fn keys_for(
+pub fn keys_for(
     params: &Params<vesta::Affine>,
     scheme: ValueCommitmentScheme,
     target_id: [u8; 32],

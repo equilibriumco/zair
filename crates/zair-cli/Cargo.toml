@@ -19,7 +19,6 @@ clap = { workspace = true, features = ["derive", "env"] }
 console-subscriber = { workspace = true, optional = true }
 dotenvy = { workspace = true }
 eyre = { workspace = true }
-rustls = { workspace = true, features = ["ring"] }
 tokio = { workspace = true, features = [
   "rt-multi-thread",
   "macros",

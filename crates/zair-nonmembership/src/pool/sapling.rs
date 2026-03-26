@@ -25,7 +25,7 @@ pub fn map_sapling_user_positions(
 
 /// # Errors
 /// Returns an error if `gap_idx` is out of bounds for the given nullifiers.
-pub fn sapling_gap_bounds(
+pub const fn sapling_gap_bounds(
     nullifiers: &[Nullifier],
     gap_idx: usize,
 ) -> Result<(Nullifier, Nullifier), MerklePathError> {

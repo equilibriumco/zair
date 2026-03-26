@@ -49,6 +49,7 @@ jubjub = { workspace = true }
 pasta_curves = { workspace = true }
 rand_core = { workspace = true }
 rpassword = { workspace = true }
+rustls = { workspace = true, features = ["ring"] }
 secrecy = { workspace = true }
 thiserror = { workspace = true }
 zeroize = { workspace = true }

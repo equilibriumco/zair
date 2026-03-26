@@ -465,7 +465,7 @@ mod tests {
         }};
     }
 
-    fn make_leaf(value: u8) -> NonMembershipNode {
+    const fn make_leaf(value: u8) -> NonMembershipNode {
         let mut bytes = [0u8; 32];
         bytes[0] = value;
         NonMembershipNode::new(bytes)

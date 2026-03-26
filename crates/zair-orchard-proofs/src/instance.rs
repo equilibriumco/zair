@@ -12,22 +12,19 @@ const NATIVE_INSTANCE_COUNT: usize = 7;
 /// Number of public instance scalars for the SHA-256 value commitment scheme.
 const SHA256_INSTANCE_COUNT: usize = 13;
 
-pub(crate) fn base_from_repr(bytes: [u8; 32]) -> Result<pallas::Base, ClaimProofError> {
+pub fn base_from_repr(bytes: [u8; 32]) -> Result<pallas::Base, ClaimProofError> {
     Option::<pallas::Base>::from(pallas::Base::from_repr(bytes))
         .ok_or(ClaimProofError::NonCanonicalBase)
 }
 
 #[cfg(feature = "prove")]
-pub(crate) fn scalar_from_repr(bytes: [u8; 32]) -> Result<pallas::Scalar, ClaimProofError> {
+pub fn scalar_from_repr(bytes: [u8; 32]) -> Result<pallas::Scalar, ClaimProofError> {
     Option::<pallas::Scalar>::from(pallas::Scalar::from_repr(bytes))
         .ok_or(ClaimProofError::NonCanonicalScalar)
 }
 
 #[cfg(feature = "prove")]
-pub(crate) fn target_id_slice(
-    target_id: &[u8; 32],
-    target_id_len: u8,
-) -> Result<&[u8], ClaimProofError> {
+pub fn target_id_slice(target_id: &[u8; 32], target_id_len: u8) -> Result<&[u8], ClaimProofError> {
     let target = target_id
         .get(..usize::from(target_id_len))
         .ok_or(ClaimProofError::InvalidTargetIdLength)?;
@@ -36,7 +33,7 @@ pub(crate) fn target_id_slice(
 }
 
 #[cfg(feature = "prove")]
-pub(crate) fn point_from_bytes(bytes: [u8; 32]) -> Result<pallas::Affine, ClaimProofError> {
+pub fn point_from_bytes(bytes: [u8; 32]) -> Result<pallas::Affine, ClaimProofError> {
     let p = Option::<pallas::Point>::from(pallas::Point::from_bytes(&bytes))
         .ok_or(ClaimProofError::InvalidPoint)?;
     if bool::from(p.is_identity()) {
@@ -57,7 +54,7 @@ fn coords_or_zero(p: pallas::Point) -> (pallas::Base, pallas::Base) {
     }
 }
 
-pub(crate) fn to_instance(
+pub fn to_instance(
     note_commitment_root: [u8; 32],
     cv: Option<[u8; 32]>,
     cv_sha256: Option<[u8; 32]>,

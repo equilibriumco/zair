@@ -49,9 +49,7 @@ fn init_tracing() -> eyre::Result<()> {
 )]
 async fn main() -> eyre::Result<()> {
     // Initialize rustls crypto provider (required for TLS connections)
-    rustls::crypto::ring::default_provider()
-        .install_default()
-        .map_err(|e| eyre::eyre!("Failed to install rustls crypto provider: {e:?}"))?;
+    zair_sdk::install_default_crypto_provider()?;
 
     // Load .env file (fails silently if not found)
     let _ = dotenvy::dotenv();

@@ -121,3 +121,23 @@ pub fn load_parameters(
 
     Ok(ClaimParameters(params))
 }
+
+/// Load parameters from in-memory bytes.
+///
+/// # Arguments
+/// * `bytes` - Proving key bytes
+/// * `checked` - If true, verify the parameters (slower but safer)
+///
+/// # Errors
+/// Returns an error if reading or parsing fails.
+pub fn load_parameters_from_bytes(
+    bytes: &[u8],
+    checked: bool,
+) -> Result<ClaimParameters, ParameterError> {
+    let cursor = std::io::Cursor::new(bytes);
+    let reader = std::io::BufReader::new(cursor);
+
+    let params = Parameters::read(reader, checked).map_err(ParameterError::Deserialization)?;
+
+    Ok(ClaimParameters(params))
+}

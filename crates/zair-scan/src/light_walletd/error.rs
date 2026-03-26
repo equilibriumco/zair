@@ -93,6 +93,7 @@ impl LightWalletdError {
         clippy::wildcard_enum_match_arm,
         reason = "We are interested in specific variants only."
     )]
+    #[must_use]
     pub fn is_retryable(&self) -> bool {
         use tonic::Code;
 

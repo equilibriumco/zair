@@ -5,7 +5,10 @@ mod builder;
 mod convenience;
 mod proving;
 
-pub use builder::{ParameterError, generate_parameters, load_parameters, save_parameters};
+pub use builder::{
+    ParameterError, generate_parameters, load_parameters, load_parameters_from_bytes,
+    save_parameters,
+};
 pub use convenience::generate_claim_proof;
 pub use proving::ClaimParameters;
 
