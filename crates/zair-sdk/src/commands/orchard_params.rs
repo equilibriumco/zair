@@ -27,7 +27,7 @@ fn tmp_path(path: &Path) -> PathBuf {
     path.with_file_name(format!("{file_name}.tmp.{}", std::process::id()))
 }
 
-fn read_params(bytes: Vec<u8>) -> eyre::Result<Params<vesta::Affine>> {
+pub fn read_params(bytes: Vec<u8>) -> eyre::Result<Params<vesta::Affine>> {
     let mut cursor = Cursor::new(bytes);
     Params::<vesta::Affine>::read(&mut cursor).context("Failed to read Orchard params")
 }

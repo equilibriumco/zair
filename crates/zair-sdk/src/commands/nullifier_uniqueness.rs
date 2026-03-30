@@ -9,7 +9,7 @@ use zair_core::base::Nullifier;
 ///
 /// # Errors
 /// Returns an error when a duplicate nullifier is found.
-pub(super) fn ensure_unique_airdrop_nullifiers<I>(nullifiers: I, context: &str) -> eyre::Result<()>
+pub fn ensure_unique_airdrop_nullifiers<I>(nullifiers: I, context: &str) -> eyre::Result<()>
 where
     I: IntoIterator<Item = Nullifier>,
 {

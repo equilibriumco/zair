@@ -1,7 +1,9 @@
 //! Connection to lightwalletd gRPC service
 
-mod config;
-mod error;
+/// Configuration for lightwalletd connection.
+pub mod config;
+/// Errors that can occur when interacting with lightwalletd.
+pub mod error;
 mod retry;
 
 use std::ops::RangeInclusive;
@@ -56,7 +58,7 @@ impl LightWalletd {
     ///
     /// # Prerequisite
     ///
-    /// `rustls::crypto::ring::default_provider().install_default()` needs to be called
+    /// `zair_sdk::install_default_crypto_provider()` needs to be called
     /// before this function is called.
     ///
     /// # Errors
@@ -70,7 +72,7 @@ impl LightWalletd {
     ///
     /// # Prerequisite
     ///
-    /// `rustls::crypto::ring::default_provider().install_default()` needs to be called
+    /// `zair_sdk::install_default_crypto_provider()` needs to be called
     /// before this function is called.
     ///
     /// # Errors

@@ -6,9 +6,7 @@ use bip39::Language;
 use eyre::Context as _;
 use secrecy::{ExposeSecret as _, SecretBox, SecretString};
 use tracing::info;
-use zcash_keys::keys::UnifiedSpendingKey;
 use zcash_protocol::consensus::Network;
-use zip32::AccountId;
 
 use super::sensitive_output::write_sensitive_output;
 use crate::seed::read_seed_file;
@@ -129,13 +127,9 @@ pub async fn key_derive_ufvk(
         read_seed_file(&seed_path).await?
     };
 
-    let account = AccountId::try_from(account).map_err(|_| eyre::eyre!("Invalid account-id"))?;
+    let ufvk = crate::api::key::derive_ufvk_from_seed(network, account, seed.expose_secret())?;
 
-    let usk = UnifiedSpendingKey::from_seed(&network, seed.expose_secret(), account)
-        .map_err(|e| eyre::eyre!("Failed to derive spending key: {e:?}"))?;
-    let ufvk = usk.to_unified_full_viewing_key();
-
-    let text = format!("{}\n", ufvk.encode(&network));
+    let text = format!("{ufvk}\n");
     write_sensitive_output(&output, &text).await?;
     info!(file = ?output, "UFVK written");
     Ok(())

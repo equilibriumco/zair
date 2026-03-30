@@ -10,12 +10,16 @@ use crate::light_walletd::{
 /// Errors specific to `LightWalletd` configuration
 #[derive(Error, Debug)]
 pub enum ConfigError {
+    /// Returned when the initial retry delay is zero.
     #[error("Initial retry delay must be greater than zero.")]
     InitialRetryDelayZero,
+    /// Returned when the maximum retry delay is less than the initial retry delay.
     #[error("Max retry delay must be greater than or equal to initial retry delay.")]
     MaxRetryDelayLessThanInitial,
+    /// Returned when the stream message timeout is below the minimum of one second.
     #[error("Stream message timeout must be at least 1 second.")]
     StreamMessageTimeoutTooLow,
+    /// Returned when the exponential-backoff factor is below the minimum of 2.
     #[error("Backoff factor must be at least 2.")]
     BackoffFactorTooLow,
 }

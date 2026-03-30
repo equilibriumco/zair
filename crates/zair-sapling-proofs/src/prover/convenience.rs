@@ -67,6 +67,7 @@ pub fn bytes_less_than(a: &[u8; 32], b: &[u8; 32]) -> bool {
 /// Returns an error if proof generation fails.
 #[allow(
     clippy::too_many_lines,
+    clippy::similar_names,
     reason = "End-to-end witness preparation and proving"
 )]
 pub fn generate_claim_proof(

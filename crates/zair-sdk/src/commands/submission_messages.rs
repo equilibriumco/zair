@@ -7,6 +7,8 @@ use eyre::{Context as _, ensure};
 use serde::{Deserialize, Serialize};
 use zair_core::base::{Nullifier, hash_message};
 
+use crate::api::sign::ResolvedMessageHashes;
+
 /// One per-claim message-file assignment.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClaimMessageAssignment {
@@ -25,34 +27,6 @@ pub struct ClaimMessagesFile {
     /// Orchard claim message assignments.
     #[serde(default)]
     pub orchard: Vec<ClaimMessageAssignment>,
-}
-
-/// Resolved message hashes for submission sign/verify.
-#[derive(Debug, Clone, Default)]
-pub struct ResolvedMessageHashes {
-    shared: Option<[u8; 32]>,
-    sapling: BTreeMap<Nullifier, [u8; 32]>,
-    orchard: BTreeMap<Nullifier, [u8; 32]>,
-}
-
-impl ResolvedMessageHashes {
-    /// Resolve Sapling message hash for a given nullifier.
-    #[must_use]
-    pub fn sapling_hash(&self, nullifier: Nullifier) -> Option<[u8; 32]> {
-        self.sapling
-            .get(&nullifier)
-            .copied()
-            .or_else(|| self.shared.as_ref().copied())
-    }
-
-    /// Resolve Orchard message hash for a given nullifier.
-    #[must_use]
-    pub fn orchard_hash(&self, nullifier: Nullifier) -> Option<[u8; 32]> {
-        self.orchard
-            .get(&nullifier)
-            .copied()
-            .or_else(|| self.shared.as_ref().copied())
-    }
 }
 
 async fn load_assignment_hashes(

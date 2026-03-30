@@ -24,6 +24,7 @@ pub struct PoolClaimResult<P> {
 
 impl<P> PoolClaimResult<P> {
     /// Create an empty result for when a pool has no claims.
+    #[must_use]
     pub const fn empty() -> Self {
         Self { claims: Vec::new() }
     }
@@ -47,6 +48,10 @@ pub trait PoolProcessor {
 
     /// Collects note metadata from the visitor.
     /// Returns `None` if the viewing key is not available.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if note collection fails.
     fn collect_notes(
         visitor: &AccountNotesVisitor,
         viewing_keys: &ViewingKeys,

@@ -142,13 +142,13 @@ pub async fn generate_claim_params(
 }
 
 /// Sapling proof generation keys for both external and internal scopes.
-struct SaplingProofGenerationKeys {
+pub struct SaplingProofGenerationKeys {
     external: sapling::ProofGenerationKey,
     internal: sapling::ProofGenerationKey,
 }
 
 /// Derive Sapling proof generation keys from a seed.
-fn derive_sapling_proof_generation_keys(
+pub fn derive_sapling_proof_generation_keys(
     network: Network,
     seed: &[u8; 64],
     account_id: u32,
@@ -168,7 +168,7 @@ fn derive_sapling_proof_generation_keys(
 
 /// Returns true when claim key material matches seed-derived key material for its scope.
 #[allow(clippy::similar_names)]
-fn claim_matches_seed_keys(
+pub fn claim_matches_seed_keys(
     claim_input: &ClaimInput<SaplingPrivateInputs>,
     keys: &SaplingProofGenerationKeys,
 ) -> bool {
@@ -261,7 +261,7 @@ fn generate_single_sapling_proof(
 }
 
 /// Generate Sapling proofs in parallel using tokio's blocking thread pool.
-async fn generate_sapling_proofs_parallel(
+pub async fn generate_sapling_proofs_parallel(
     sapling_inputs: Vec<ClaimInput<SaplingPrivateInputs>>,
     params: Arc<ClaimParameters>,
     pvk: Arc<PreparedVerifyingKey<Bls12>>,
@@ -393,7 +393,7 @@ fn orchard_target_id_bytes(target_id: &str) -> eyre::Result<([u8; 32], u8)> {
     clippy::too_many_lines,
     reason = "Per-claim Orchard proving needs explicit material"
 )]
-fn generate_single_orchard_proof(
+pub fn generate_single_orchard_proof(
     params: &Params<vesta::Affine>,
     claim_input: &ClaimInput<OrchardPrivateInputs>,
     usk: &UnifiedSpendingKey,
