@@ -6,3 +6,5 @@ extend-ignore-re = ["([a-zA-Z0-9]{16,})"]
 groth = "groth"
 Groth = "Groth"
 advices = "advices"
+nam = "nam"
+NAM = "NAM"
