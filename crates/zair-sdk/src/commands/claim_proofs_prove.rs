@@ -213,7 +213,7 @@ fn generate_single_sapling_proof(
     let rcv_bytes = rcv.inner().to_repr();
 
     let rcv_sha256 = match value_commitment_scheme {
-        SaplingValueCommitmentScheme::Native => None,
+        SaplingValueCommitmentScheme::Native | SaplingValueCommitmentScheme::Plain => None,
         SaplingValueCommitmentScheme::Sha256 => {
             let mut rcv_sha256 = [0_u8; 32];
             rand_core::RngCore::fill_bytes(&mut rng, &mut rcv_sha256);
@@ -253,7 +253,7 @@ fn generate_single_sapling_proof(
             alpha: alpha_bytes,
             rcv: match value_commitment_scheme {
                 SaplingValueCommitmentScheme::Native => Some(rcv_bytes),
-                SaplingValueCommitmentScheme::Sha256 => None,
+                SaplingValueCommitmentScheme::Sha256 | SaplingValueCommitmentScheme::Plain => None,
             },
             rcv_sha256,
         },
@@ -421,7 +421,7 @@ pub fn generate_single_orchard_proof(
     let ak_p_bytes = pallas::Point::from(&ak).to_bytes();
 
     let rcv_sha256 = match orchard_scheme {
-        OrchardValueCommitmentScheme::Native => None,
+        OrchardValueCommitmentScheme::Native | OrchardValueCommitmentScheme::Plain => None,
         OrchardValueCommitmentScheme::Sha256 => {
             let mut bytes = [0_u8; 32];
             rand_core::RngCore::fill_bytes(&mut rng, &mut bytes);
@@ -487,6 +487,7 @@ pub fn generate_single_orchard_proof(
         rk: proof_output.rk,
         cv: proof_output.cv,
         cv_sha256: proof_output.cv_sha256,
+        value: proof_output.value,
         airdrop_nullifier: claim_input.public_inputs.airdrop_nullifier,
     };
     let secret = OrchardClaimSecretResult {
@@ -494,7 +495,7 @@ pub fn generate_single_orchard_proof(
         alpha: alpha_bytes,
         rcv: match orchard_scheme {
             OrchardValueCommitmentScheme::Native => Some(rcv_bytes),
-            OrchardValueCommitmentScheme::Sha256 => None,
+            OrchardValueCommitmentScheme::Sha256 | OrchardValueCommitmentScheme::Plain => None,
         },
         rcv_sha256,
     };
@@ -736,6 +737,7 @@ const fn to_proof_result(
         rk: output.rk,
         cv: output.cv,
         cv_sha256: output.cv_sha256,
+        value: output.value,
         airdrop_nullifier,
     }
 }

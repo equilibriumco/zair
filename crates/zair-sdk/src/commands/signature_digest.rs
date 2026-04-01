@@ -14,6 +14,7 @@ pub fn hash_sapling_proof(proof: &SaplingClaimProofResult) -> [u8; 32] {
         &proof.rk,
         proof.cv,
         proof.cv_sha256,
+        proof.value,
         proof.airdrop_nullifier,
     )
 }
@@ -25,6 +26,7 @@ pub fn hash_orchard_proof(proof: &OrchardClaimProofResult) -> eyre::Result<[u8; 
         &proof.rk,
         proof.cv,
         proof.cv_sha256,
+        proof.value,
         proof.airdrop_nullifier,
     )?;
     Ok(digest)
@@ -38,6 +40,7 @@ pub fn hash_sapling_signed_claim_proof(claim: &SaplingSignedClaim) -> [u8; 32] {
         &claim.rk,
         claim.cv,
         claim.cv_sha256,
+        claim.value,
         claim.airdrop_nullifier,
     )
 }
@@ -49,6 +52,7 @@ pub fn hash_orchard_signed_claim_proof(claim: &OrchardSignedClaim) -> eyre::Resu
         &claim.rk,
         claim.cv,
         claim.cv_sha256,
+        claim.value,
         claim.airdrop_nullifier,
     )?;
     Ok(digest)
@@ -68,6 +72,7 @@ mod tests {
             rk: [2_u8; 32],
             cv: Some([3_u8; 32]),
             cv_sha256: None,
+            value: None,
             airdrop_nullifier: Nullifier::from([4_u8; 32]),
         };
         let p1 = SaplingClaimProofResult {
@@ -75,6 +80,7 @@ mod tests {
             rk: [8_u8; 32],
             cv: None,
             cv_sha256: Some([7_u8; 32]),
+            value: None,
             airdrop_nullifier: Nullifier::from([6_u8; 32]),
         };
         let h0 = hash_sapling_proof(&p0);
@@ -91,6 +97,7 @@ mod tests {
             rk: [2_u8; 32],
             cv: Some([3_u8; 32]),
             cv_sha256: None,
+            value: None,
             airdrop_nullifier: Nullifier::from([4_u8; 32]),
         };
         let p1 = OrchardClaimProofResult {
@@ -98,6 +105,7 @@ mod tests {
             rk: [2_u8; 32],
             cv: Some([3_u8; 32]),
             cv_sha256: None,
+            value: None,
             airdrop_nullifier: Nullifier::from([4_u8; 32]),
         };
         let h0 = hash_orchard_proof(&p0).expect("hash should succeed");

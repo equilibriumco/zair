@@ -45,6 +45,8 @@ pub enum ValueCommitmentScheme {
     Native,
     /// Expose a SHA-256 value commitment digest.
     Sha256,
+    /// Expose the note value directly as a public input (no commitment).
+    Plain,
 }
 
 /// Level used for hashing nullifier pairs into non-membership tree leaves.
@@ -253,6 +255,52 @@ where
     Ok(value_bits)
 }
 
+/// Exposes the note value directly as a single public input (Plain scheme).
+fn expose_plain_value<CS>(
+    mut cs: CS,
+    value_commitment_opening: Option<&ValueCommitmentOpening>,
+) -> Result<Vec<boolean::Boolean>, SynthesisError>
+where
+    CS: ConstraintSystem<bls12_381::Scalar>,
+{
+    // Witness value bits for note commitment recomputation.
+    let value_bits = boolean::u64_into_boolean_vec_le(
+        cs.namespace(|| "value bits"),
+        value_commitment_opening.as_ref().map(|c| c.value.inner()),
+    )?;
+
+    // Allocate the value as a single scalar public input.
+    let value_num = num::AllocatedNum::alloc(cs.namespace(|| "value num"), || {
+        let v = value_commitment_opening
+            .ok_or(SynthesisError::AssignmentMissing)?
+            .value
+            .inner();
+        Ok(bls12_381::Scalar::from(v))
+    })?;
+    value_num.inputize(cs.namespace(|| "value public input"))?;
+
+    // Enforce consistency: value_num == sum(value_bits[i] * 2^i).
+    #[allow(
+        clippy::arithmetic_side_effects,
+        reason = "Bellman linear combination arithmetic is safe and required for constraint construction"
+    )]
+    cs.enforce(
+        || "value_num equals value_bits",
+        |mut lc| {
+            let mut coeff = bls12_381::Scalar::one();
+            for bit in &value_bits {
+                lc = lc + &bit.lc(CS::one(), coeff);
+                coeff = coeff.double();
+            }
+            lc
+        },
+        |lc| lc + CS::one(),
+        |lc| lc + value_num.get_variable(),
+    );
+
+    Ok(value_bits)
+}
+
 #[must_use]
 fn bytes_to_bits_be_const(bytes: &[u8]) -> Vec<boolean::Boolean> {
     let mut out = Vec::with_capacity(bytes.len().saturating_mul(8));
@@ -457,6 +505,10 @@ impl Circuit<bls12_381::Scalar> for Claim {
                 )?;
                 value_bits
             }
+            ValueCommitmentScheme::Plain => expose_plain_value(
+                cs.namespace(|| "plain value"),
+                self.value_commitment_opening.as_ref(),
+            )?,
         };
         note_contents.extend(value_bits);
 

@@ -158,6 +158,7 @@ mod verify {
                     rk: entry.rk,
                     cv: entry.cv,
                     cv_sha256: entry.cv_sha256,
+                    value: entry.value,
                     airdrop_nullifier: entry.airdrop_nullifier,
                 })
                 .collect(),
@@ -169,6 +170,7 @@ mod verify {
                     rk: entry.rk,
                     cv: entry.cv,
                     cv_sha256: entry.cv_sha256,
+                    value: entry.value,
                     airdrop_nullifier: entry.airdrop_nullifier,
                 })
                 .collect(),

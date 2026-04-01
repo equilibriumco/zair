@@ -38,6 +38,7 @@ pub fn verify_claim_proof(
     zkproof: &[u8],
     cv: &Option<[u8; 32]>,
     cv_sha256: &Option<[u8; 32]>,
+    value: &Option<u64>,
     airdrop_nullifier: &[u8; 32],
     rk: &[u8; 32],
     note_commitment_root: &[u8; 32],
@@ -57,6 +58,7 @@ pub fn verify_claim_proof(
         *note_commitment_root,
         *cv,
         *cv_sha256,
+        *value,
         *airdrop_nullifier,
         *rk,
         *nullifier_gap_root,
@@ -91,6 +93,7 @@ pub fn verify_claim_proof_output(
         rk,
         cv,
         cv_sha256,
+        value,
         airdrop_nullifier,
     }: &ClaimProofOutput,
     note_commitment_root: [u8; 32],
@@ -103,6 +106,7 @@ pub fn verify_claim_proof_output(
         zkproof,
         cv,
         cv_sha256,
+        value,
         airdrop_nullifier,
         rk,
         &note_commitment_root,
@@ -132,6 +136,7 @@ pub fn hash_orchard_proof_fields(
     rk: &[u8; 32],
     cv: Option<[u8; 32]>,
     cv_sha256: Option<[u8; 32]>,
+    value: Option<u64>,
     airdrop_nullifier: Nullifier,
 ) -> Result<[u8; 32], ClaimProofError> {
     let mut preimage = Vec::new();
@@ -152,6 +157,13 @@ pub fn hash_orchard_proof_fields(
         Some(bytes) => {
             preimage.push(1);
             preimage.extend_from_slice(&bytes);
+        }
+        None => preimage.push(0),
+    }
+    match value {
+        Some(v) => {
+            preimage.push(1);
+            preimage.extend_from_slice(&v.to_le_bytes());
         }
         None => preimage.push(0),
     }

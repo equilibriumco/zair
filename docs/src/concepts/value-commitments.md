@@ -27,3 +27,13 @@ $$
 $$
 
 Here `rcv_sha256` is the randomness used by the SHA-256 commitment scheme, and $\mathsf{LE64}(v)$ is the value as 8 little endian bytes, and the prefix `"Zair"` is a fixed 4-byte ASCII domain-separation tag.
+
+## Plain scheme
+
+When the configured value-commitment scheme is `plain`, the note value is exposed directly as a single public field element with no commitment or randomness:
+
+$$
+\mathsf{value} := v
+$$
+
+This provides no privacy for the note value. It is useful when value hiding is not required and a simpler, more compact public input is preferred. No `rcv` or `rcv_sha256` randomness is needed.

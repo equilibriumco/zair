@@ -37,6 +37,9 @@ pub enum VerificationError {
     /// Missing SHA-256 value commitment for sha256 scheme.
     #[error("Missing cv_sha256 for sha256 value commitment scheme")]
     MissingCvSha256,
+    /// Missing value for plain scheme.
+    #[error("Missing value for plain value commitment scheme")]
+    MissingValue,
     /// Proof decoding failed
     #[error("Proof decoding failed: {0}")]
     ProofDecoding(String),
@@ -70,6 +73,8 @@ pub struct ClaimPublicInputs {
     pub cv: Option<jubjub::AffinePoint>,
     /// SHA-256 value commitment (`cv_sha256`), when using the `sha256` scheme.
     pub cv_sha256: Option<[u8; 32]>,
+    /// Plain note value, when using the `plain` scheme.
+    pub value: Option<u64>,
     /// The note commitment root (merkle tree root)
     pub note_commitment_root: bls12_381::Scalar,
     /// The airdrop nullifier (airdrop-specific, 32 bytes)
@@ -83,11 +88,16 @@ impl ClaimPublicInputs {
     ///
     /// # Errors
     /// Returns an error if any field is invalid.
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "Public verifier API takes explicit proof fields"
+    )]
     pub fn from_bytes(
         value_commitment_scheme: ValueCommitmentScheme,
         rk: &[u8; 32],
         cv: Option<&[u8; 32]>,
         cv_sha256: Option<&[u8; 32]>,
+        value: Option<u64>,
         note_commitment_root: &[u8; 32],
         airdrop_nullifier: &[u8; 32],
         nullifier_gap_root: &[u8; 32],
@@ -97,13 +107,17 @@ impl ClaimPublicInputs {
             ValueCommitmentScheme::Native => {
                 Some(parse_point(cv.ok_or(VerificationError::MissingCv)?)?)
             }
-            ValueCommitmentScheme::Sha256 => None,
+            ValueCommitmentScheme::Sha256 | ValueCommitmentScheme::Plain => None,
         };
         let cv_sha256 = match value_commitment_scheme {
-            ValueCommitmentScheme::Native => None,
+            ValueCommitmentScheme::Native | ValueCommitmentScheme::Plain => None,
             ValueCommitmentScheme::Sha256 => {
                 Some(*cv_sha256.ok_or(VerificationError::MissingCvSha256)?)
             }
+        };
+        let value = match value_commitment_scheme {
+            ValueCommitmentScheme::Plain => Some(value.ok_or(VerificationError::MissingValue)?),
+            ValueCommitmentScheme::Native | ValueCommitmentScheme::Sha256 => None,
         };
         let note_commitment_root = bls12_381::Scalar::from_bytes(note_commitment_root)
             .into_option()
@@ -116,6 +130,7 @@ impl ClaimPublicInputs {
             value_commitment_scheme,
             cv,
             cv_sha256,
+            value,
             note_commitment_root,
             airdrop_nullifier: *airdrop_nullifier,
             nullifier_gap_root,
@@ -163,6 +178,10 @@ impl ClaimPublicInputs {
                     .ok_or(VerificationError::UnexpectedMultipackLength(packed.len()))?;
                 out.push(vc_0);
                 out.push(vc_1);
+            }
+            ValueCommitmentScheme::Plain => {
+                let v = self.value.ok_or(VerificationError::MissingValue)?;
+                out.push(bls12_381::Scalar::from(v));
             }
         }
 
@@ -229,6 +248,7 @@ pub fn verify_claim_proof_bytes(
     rk: &[u8; 32],
     cv: Option<&[u8; 32]>,
     cv_sha256: Option<&[u8; 32]>,
+    value: Option<u64>,
     note_commitment_root: &[u8; 32],
     airdrop_nullifier: &[u8; 32],
     nullifier_gap_root: &[u8; 32],
@@ -240,6 +260,7 @@ pub fn verify_claim_proof_bytes(
         rk,
         cv,
         cv_sha256,
+        value,
         note_commitment_root,
         airdrop_nullifier,
         nullifier_gap_root,
@@ -268,6 +289,7 @@ pub fn verify_claim_proof_output(
         &proof_output.rk,
         proof_output.cv.as_ref(),
         proof_output.cv_sha256.as_ref(),
+        proof_output.value,
         note_commitment_root,
         &proof_output.airdrop_nullifier,
         nullifier_gap_root,
@@ -297,6 +319,7 @@ pub fn hash_sapling_proof_fields(
     rk: &[u8; 32],
     cv: Option<[u8; 32]>,
     cv_sha256: Option<[u8; 32]>,
+    value: Option<u64>,
     airdrop_nullifier: Nullifier,
 ) -> [u8; 32] {
     let mut preimage = Vec::new();
@@ -314,6 +337,13 @@ pub fn hash_sapling_proof_fields(
         Some(bytes) => {
             preimage.push(1);
             preimage.extend_from_slice(&bytes);
+        }
+        None => preimage.push(0),
+    }
+    match value {
+        Some(v) => {
+            preimage.push(1);
+            preimage.extend_from_slice(&v.to_le_bytes());
         }
         None => preimage.push(0),
     }

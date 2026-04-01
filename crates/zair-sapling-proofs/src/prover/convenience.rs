@@ -158,10 +158,10 @@ pub fn generate_claim_proof(
         .ok_or(ClaimProofError::InvalidRcv)?;
 
     let rcv_sha256 = match inputs.value_commitment_scheme {
-        ValueCommitmentScheme::Native => {
+        ValueCommitmentScheme::Native | ValueCommitmentScheme::Plain => {
             if inputs.rcv_sha256.is_some() {
                 return Err(ClaimProofError::ProofCreation(
-                    "Unexpected rcv_sha256 for native scheme".to_string(),
+                    "Unexpected rcv_sha256 for native/plain scheme".to_string(),
                 ));
             }
             None
@@ -208,9 +208,13 @@ pub fn generate_claim_proof(
         rk: rk_bytes,
         cv: match inputs.value_commitment_scheme {
             ValueCommitmentScheme::Native => Some(cv_bytes),
-            ValueCommitmentScheme::Sha256 => None,
+            ValueCommitmentScheme::Sha256 | ValueCommitmentScheme::Plain => None,
         },
         cv_sha256,
+        value: match inputs.value_commitment_scheme {
+            ValueCommitmentScheme::Plain => Some(inputs.value),
+            ValueCommitmentScheme::Native | ValueCommitmentScheme::Sha256 => None,
+        },
         airdrop_nullifier: inputs.airdrop_nullifier,
     };
     Ok(proof_output)

@@ -11,6 +11,8 @@ use crate::types::ValueCommitmentScheme;
 const NATIVE_INSTANCE_COUNT: usize = 7;
 /// Number of public instance scalars for the SHA-256 value commitment scheme.
 const SHA256_INSTANCE_COUNT: usize = 13;
+/// Number of public instance scalars for the Plain value commitment scheme.
+const PLAIN_INSTANCE_COUNT: usize = 6;
 
 pub fn base_from_repr(bytes: [u8; 32]) -> Result<pallas::Base, ClaimProofError> {
     Option::<pallas::Base>::from(pallas::Base::from_repr(bytes))
@@ -54,10 +56,15 @@ fn coords_or_zero(p: pallas::Point) -> (pallas::Base, pallas::Base) {
     }
 }
 
+#[allow(
+    clippy::too_many_arguments,
+    reason = "Instance construction needs all public proof fields"
+)]
 pub fn to_instance(
     note_commitment_root: [u8; 32],
     cv: Option<[u8; 32]>,
     cv_sha256: Option<[u8; 32]>,
+    value: Option<u64>,
     airdrop_nf: [u8; 32],
     rk_bytes: [u8; 32],
     nullifier_gap_root: [u8; 32],
@@ -66,6 +73,7 @@ pub fn to_instance(
     let mut instance: Vec<vesta::Scalar> = Vec::with_capacity(match scheme {
         ValueCommitmentScheme::Native => NATIVE_INSTANCE_COUNT,
         ValueCommitmentScheme::Sha256 => SHA256_INSTANCE_COUNT,
+        ValueCommitmentScheme::Plain => PLAIN_INSTANCE_COUNT,
     });
 
     let rk_point = Option::<pallas::Point>::from(pallas::Point::from_bytes(&rk_bytes))
@@ -92,6 +100,13 @@ pub fn to_instance(
                 let word = u32::from_be_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]) as u64;
                 instance.push(vesta::Scalar::from(word));
             }
+            instance.push(base_from_repr(note_commitment_root)?);
+            instance.push(base_from_repr(nullifier_gap_root)?);
+            instance.push(base_from_repr(airdrop_nf)?);
+        }
+        ValueCommitmentScheme::Plain => {
+            let v = value.ok_or(ClaimProofError::MissingValue)?;
+            instance.push(vesta::Scalar::from(v));
             instance.push(base_from_repr(note_commitment_root)?);
             instance.push(base_from_repr(nullifier_gap_root)?);
             instance.push(base_from_repr(airdrop_nf)?);

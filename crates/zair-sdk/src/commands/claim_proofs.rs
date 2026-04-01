@@ -45,6 +45,9 @@ pub struct SaplingClaimProofResult {
     #[serde_as(as = "Option<Hex>")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cv_sha256: Option<[u8; 32]>,
+    /// The plain note value, if the scheme is `plain`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value: Option<u64>,
     /// The airdrop nullifier (airdrop-specific nullifier for double-claim prevention).
     pub airdrop_nullifier: Nullifier,
 }
@@ -67,6 +70,9 @@ pub struct OrchardClaimProofResult {
     #[serde_as(as = "Option<Hex>")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cv_sha256: Option<[u8; 32]>,
+    /// The plain note value, if the scheme is `plain`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value: Option<u64>,
     /// The airdrop nullifier (airdrop-specific nullifier for double-claim prevention).
     pub airdrop_nullifier: Nullifier,
 }
@@ -253,6 +259,7 @@ pub(super) async fn verify_claim_proofs_inner(
                     &proof_result.rk,
                     proof_result.cv.as_ref(),
                     proof_result.cv_sha256.as_ref(),
+                    proof_result.value,
                     &note_commitment_root,
                     &airdrop_nullifier,
                     &nullifier_gap_root,
@@ -296,6 +303,11 @@ pub(super) async fn verify_claim_proofs_inner(
                     OrchardValueCommitmentScheme::Sha256 => {
                         proof_result.cv.is_none() && proof_result.cv_sha256.is_some()
                     }
+                    OrchardValueCommitmentScheme::Plain => {
+                        proof_result.cv.is_none() &&
+                            proof_result.cv_sha256.is_none() &&
+                            proof_result.value.is_some()
+                    }
                 });
             let params = if needs_halo2 {
                 Some(
@@ -320,6 +332,11 @@ pub(super) async fn verify_claim_proofs_inner(
                     OrchardValueCommitmentScheme::Sha256 => {
                         proof_result.cv.is_none() && proof_result.cv_sha256.is_some()
                     }
+                    OrchardValueCommitmentScheme::Plain => {
+                        proof_result.cv.is_none() &&
+                            proof_result.cv_sha256.is_none() &&
+                            proof_result.value.is_some()
+                    }
                 };
                 if !scheme_ok {
                     warn!(
@@ -336,6 +353,7 @@ pub(super) async fn verify_claim_proofs_inner(
                     rk: proof_result.rk,
                     cv: proof_result.cv,
                     cv_sha256: proof_result.cv_sha256,
+                    value: proof_result.value,
                     airdrop_nullifier: proof_result.airdrop_nullifier.into(),
                 };
 
@@ -441,6 +459,7 @@ mod tests {
             rk: [7_u8; 32],
             cv: Some([9_u8; 32]),
             cv_sha256: None,
+            value: None,
             airdrop_nullifier: Nullifier::from([11_u8; 32]),
         }
     }
@@ -522,6 +541,7 @@ mod tests {
                 rk: [2_u8; 32],
                 cv: Some([3_u8; 32]),
                 cv_sha256: None,
+                value: None,
                 airdrop_nullifier: Nullifier::from([4_u8; 32]),
             }],
             orchard_proofs: vec![],

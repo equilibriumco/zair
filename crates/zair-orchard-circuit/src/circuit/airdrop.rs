@@ -53,6 +53,9 @@ pub const K_AIRDROP_NATIVE: u32 = 12;
 /// commitment.
 pub const K_AIRDROP_SHA256: u32 = 17;
 
+/// Circuit size parameter for the plain value-commitment scheme (2^12 rows).
+pub const K_AIRDROP_PLAIN: u32 = 12;
+
 // Public input offsets.
 //
 // Ordering mirrors Sapling: rk first, then value commitment(s), then anchors, then airdrop
@@ -72,6 +75,11 @@ const NOTE_ANCHOR_SHA: usize = 10;
 const GAP_ROOT_SHA: usize = 11;
 const AIRDROP_NF_SHA: usize = 12;
 
+const VALUE_PLAIN: usize = 2;
+const NOTE_ANCHOR_PLAIN: usize = 3;
+const GAP_ROOT_PLAIN: usize = 4;
+const AIRDROP_NF_PLAIN: usize = 5;
+
 /// Value commitment scheme selection for the Orchard airdrop circuit.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum ValueCommitmentScheme {
@@ -80,6 +88,8 @@ pub enum ValueCommitmentScheme {
     Native,
     /// Expose only `cv_sha256` (standard SHA-256 digest bytes).
     Sha256,
+    /// Expose the note value directly as a public input (no commitment).
+    Plain,
 }
 
 impl ValueCommitmentScheme {
@@ -89,6 +99,7 @@ impl ValueCommitmentScheme {
         match self {
             Self::Native => K_AIRDROP_NATIVE,
             Self::Sha256 => K_AIRDROP_SHA256,
+            Self::Plain => K_AIRDROP_PLAIN,
         }
     }
 }
@@ -245,6 +256,8 @@ pub struct Instance {
     pub value_commitment_scheme: ValueCommitmentScheme,
     /// SHA-256 value commitment digest bytes, when enabled.
     pub cv_sha256: Option<[u8; 32]>,
+    /// Plain note value as a field element, when using the `plain` scheme.
+    pub value: pallas::Base,
 }
 
 impl Instance {
@@ -252,6 +265,7 @@ impl Instance {
         let mut instance = match self.value_commitment_scheme {
             ValueCommitmentScheme::Native => vec![vesta::Scalar::zero(); 7],
             ValueCommitmentScheme::Sha256 => vec![vesta::Scalar::zero(); 13],
+            ValueCommitmentScheme::Plain => vec![vesta::Scalar::zero(); 6],
         };
 
         let rk = self.rk.coordinates().expect("rk is non-identity");
@@ -275,6 +289,12 @@ impl Instance {
                 instance[NOTE_ANCHOR_SHA] = self.note_anchor;
                 instance[GAP_ROOT_SHA] = self.gap_root;
                 instance[AIRDROP_NF_SHA] = self.airdrop_nf;
+            }
+            ValueCommitmentScheme::Plain => {
+                instance[VALUE_PLAIN] = self.value;
+                instance[NOTE_ANCHOR_PLAIN] = self.note_anchor;
+                instance[GAP_ROOT_PLAIN] = self.gap_root;
+                instance[AIRDROP_NF_PLAIN] = self.airdrop_nf;
             }
         }
 
@@ -611,6 +631,7 @@ impl plonk::Circuit<pallas::Base> for Circuit {
                 (NOTE_ANCHOR_NATIVE, GAP_ROOT_NATIVE, AIRDROP_NF_NATIVE)
             }
             ValueCommitmentScheme::Sha256 => (NOTE_ANCHOR_SHA, GAP_ROOT_SHA, AIRDROP_NF_SHA),
+            ValueCommitmentScheme::Plain => (NOTE_ANCHOR_PLAIN, GAP_ROOT_PLAIN, AIRDROP_NF_PLAIN),
         };
 
         // === Witness note preimage + keys ===
@@ -785,7 +806,7 @@ impl plonk::Circuit<pallas::Base> for Circuit {
 
             let digest_start = match scheme {
                 ValueCommitmentScheme::Sha256 => DIGEST_0_SHA,
-                ValueCommitmentScheme::Native => unreachable!(),
+                ValueCommitmentScheme::Native | ValueCommitmentScheme::Plain => unreachable!(),
             };
 
             let mut digest_cells: Vec<
@@ -849,6 +870,11 @@ impl plonk::Circuit<pallas::Base> for Circuit {
             for (i, cell) in digest_cells.iter().enumerate() {
                 layouter.constrain_instance(cell.cell(), config.primary, digest_start + i)?;
             }
+        }
+
+        // === Value commitment: plain ===
+        if scheme == ValueCommitmentScheme::Plain {
+            layouter.constrain_instance(v.cell(), config.primary, VALUE_PLAIN)?;
         }
 
         // === Standard nullifier (private) ===

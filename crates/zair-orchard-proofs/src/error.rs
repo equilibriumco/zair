@@ -32,9 +32,12 @@ pub enum ClaimProofError {
     /// Missing SHA-256 value commitment randomness in SHA-256 scheme mode.
     #[error("missing rcv_sha256 for sha256 value commitment scheme")]
     MissingRcvSha256,
-    /// Unexpected SHA-256 value commitment randomness in native scheme mode.
-    #[error("unexpected rcv_sha256 for native value commitment scheme")]
+    /// Unexpected SHA-256 value commitment randomness in native/plain scheme mode.
+    #[error("unexpected rcv_sha256 for native/plain value commitment scheme")]
     UnexpectedRcvSha256,
+    /// Missing value for plain value commitment scheme.
+    #[error("missing value for plain value commitment scheme")]
+    MissingValue,
     /// Halo2 params `k` does not match the configured scheme.
     #[error("Orchard params k mismatch: expected {expected}, got {actual}")]
     InvalidParamsK { expected: u32, actual: u32 },

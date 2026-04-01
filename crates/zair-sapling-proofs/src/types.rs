@@ -13,6 +13,8 @@ pub enum ValueCommitmentScheme {
     Native,
     /// Expose SHA-256 value commitment.
     Sha256,
+    /// Expose the note value directly (no commitment).
+    Plain,
 }
 
 #[cfg(feature = "prove")]
@@ -21,6 +23,7 @@ impl From<ValueCommitmentScheme> for zair_sapling_circuit::ValueCommitmentScheme
         match scheme {
             ValueCommitmentScheme::Native => Self::Native,
             ValueCommitmentScheme::Sha256 => Self::Sha256,
+            ValueCommitmentScheme::Plain => Self::Plain,
         }
     }
 }
@@ -30,6 +33,7 @@ impl From<zair_core::schema::config::ValueCommitmentScheme> for ValueCommitmentS
         match scheme {
             zair_core::schema::config::ValueCommitmentScheme::Native => Self::Native,
             zair_core::schema::config::ValueCommitmentScheme::Sha256 => Self::Sha256,
+            zair_core::schema::config::ValueCommitmentScheme::Plain => Self::Plain,
         }
     }
 }
@@ -91,6 +95,8 @@ pub struct ClaimProofOutput {
     pub cv: Option<[u8; 32]>,
     /// The SHA-256 value commitment (`cv_sha256`), if this proof uses the `sha256` scheme.
     pub cv_sha256: Option<[u8; 32]>,
+    /// The plain note value, if this proof uses the `plain` scheme.
+    pub value: Option<u64>,
     /// The airdrop nullifier (airdrop-specific, 32 bytes)
     pub airdrop_nullifier: [u8; 32],
 }

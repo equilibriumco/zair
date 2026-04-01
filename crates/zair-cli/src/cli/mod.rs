@@ -133,8 +133,9 @@ pub fn parse_value_commitment_scheme(s: &str) -> Result<ValueCommitmentScheme> {
     match s {
         "native" => Ok(ValueCommitmentScheme::Native),
         "sha256" => Ok(ValueCommitmentScheme::Sha256),
+        "plain" => Ok(ValueCommitmentScheme::Plain),
         other => Err(eyre!(
-            "Invalid value commitment scheme: {other}. Expected 'native' or 'sha256'."
+            "Invalid value commitment scheme: {other}. Expected 'native', 'sha256', or 'plain'."
         )),
     }
 }

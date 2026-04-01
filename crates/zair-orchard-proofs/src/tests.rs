@@ -31,6 +31,7 @@ fn cv_sha256_test_vector() {
         note_commitment_root,
         None,
         Some(expected),
+        None,
         airdrop_nf,
         rk_bytes,
         nullifier_gap_root,
@@ -69,6 +70,7 @@ fn to_instance_lengths_match_scheme() {
         note_commitment_root,
         Some(cv_bytes),
         None,
+        None,
         airdrop_nf,
         rk_bytes,
         nullifier_gap_root,
@@ -83,6 +85,7 @@ fn to_instance_lengths_match_scheme() {
         note_commitment_root,
         None,
         Some(digest),
+        None,
         airdrop_nf,
         rk_bytes,
         nullifier_gap_root,
@@ -108,6 +111,7 @@ fn dummy_output() -> ClaimProofOutput {
         rk: [0_u8; 32],
         cv: Some([0_u8; 32]),
         cv_sha256: None,
+        value: None,
         airdrop_nullifier: [0_u8; 32],
     }
 }

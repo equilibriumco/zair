@@ -20,7 +20,7 @@ For a Sapling note, the circuit proves:
 - Snapshot unspentness: for the note’s private (standard) Sapling nullifier nf, the witness provides adjacent bounds (left, right) and the circuit enforces left < nf < right, plus a
   Merkle opening of the corresponding gap leaf to the gap-root
 - Double-claim prevention: a public airdrop nullifier is derived from the same nullifier preimage, using an airdrop-specific BLAKE2s personalization
-- Value binding: a public value commitment matches the note value (native cv or cv_sha256)
+- Value binding: a public value commitment matches the note value (native cv, cv_sha256, or plain value)
 
 ## Public instance
 
@@ -38,6 +38,13 @@ scheme:
 - **SHA-256**: 8 BLS12-381 scalars
   1. `rk.u`, `rk.v`: randomization key
   2. `cv_sha256`: value commitment (256-bit digest multipacked into 2 scalars)
+  3. `anchor`: note commitment tree root
+  4. `hiding_nf`: airdrop nullifier (multipacked into 2 scalars)
+  5. `nm_anchor`: spent-nullifier gap-tree root
+
+- **Plain**: 7 BLS12-381 scalars
+  1. `rk.u`, `rk.v`: randomization key
+  2. `value`: note value (single scalar)
   3. `anchor`: note commitment tree root
   4. `hiding_nf`: airdrop nullifier (multipacked into 2 scalars)
   5. `nm_anchor`: spent-nullifier gap-tree root
