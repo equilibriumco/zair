@@ -1,6 +1,110 @@
 # Integration: Namada
 
-This page describes an example integration of ZAIR in Namada. You can find the latest source code hosted at [GitHub](https://github.com/eigerco/namada) (_latest commit at the time of writing: [`f3292f8`](https://github.com/eigerco/namada/commit/f3292f8d800227e922a0934f7edf232dfe907db4)_).
+This page describes an example integration of ZAIR in Namada. You can find the latest source code hosted at [GitHub](https://github.com/eigerco/namada) (_latest commit at the time of writing: [`53f8a9c`](https://github.com/eigerco/namada/commit/53f8a9c7059a873db7dacc18d8b4916e61272c5e)_).
+
+## Getting Started
+
+This section walks through a minimal end-to-end workflow: building an airdrop configuration, spinning up a local Namada chain, and claiming an airdrop.
+
+### 1. Preparing a ZAIR Airdrop Configuration
+
+Generate the proving parameters and airdrop config:
+
+```bash
+zair setup sapling --scheme sha256
+zair setup orchard --scheme sha256
+zair config build --network testnet --height 3663119
+```
+
+Then create an `airdrop` directory containing all the generated artifacts:
+
+```bash
+mkdir airdrop
+mv config.json *.params *.bin airdrop/
+```
+
+The `airdrop` directory should contain the following files:
+
+| File                        | Description                  |
+| --------------------------- | ---------------------------- |
+| `config.json`               | Airdrop configuration        |
+| `setup-sapling-pk.params`   | Sapling proving key          |
+| `setup-sapling-vk.params`   | Sapling verifying key        |
+| `setup-orchard-params.bin`  | Orchard proving parameters   |
+| `snapshot-sapling.bin`      | Sapling snapshot nullifiers  |
+| `snapshot-orchard.bin`      | Orchard snapshot nullifiers  |
+
+See [`zair config`](../cli/config.md) and [`zair setup`](../cli/setup.md) for the full flag references.
+
+### 2. Setting Up a Local Namada Chain
+
+Compile the Namada executable:
+
+```bash
+make build
+```
+
+Compile WASM transactions and initialize a local test chain:
+
+```bash
+cd wasm && make all && cd ..
+python3 ./scripts/gen_checksums.py
+python3 ./scripts/gen_localnet.py -m release
+```
+
+```admonish warning
+If you encounter a compilation error with `nam-blst`, try building with `CC=clang` instead.
+```
+
+### 3. Copying Airdrop Configuration to Chain Config
+
+Copy the generated airdrop directory into the chain's validator base directory:
+
+```bash
+# Note the chain ID starting with "local." from the output below
+ls .namada/validator-0/
+```
+
+```bash
+cp -r airdrop/ .namada/validator-0/<CHAIN_ID>/airdrop/
+```
+
+```admonish note
+This step initializes the airdrop state in genesis and must be completed before starting the chain.
+```
+
+### 4. Starting the Chain
+
+Start the validator:
+
+```bash
+namada ledger run --base-dir .namada/validator-0
+```
+
+### 5. Claiming an Airdrop
+
+With the chain running, submit a claim transaction using the desired account address:
+
+```bash
+namada client claim-airdrop \
+  --base-dir .namada/validator-0 \
+  --source <ADDRESS> \
+  --seed-file-path <SEED_FILE> \
+  --birthday <BIRTHDAY> \
+  --gas-limit 300000
+```
+
+You can verify the claim by querying the account balance before and after:
+
+```bash
+namada client balance --base-dir .namada/validator-0 --owner <ADDRESS> --token NAM
+```
+
+```admonish note
+Use `namada wallet list --base-dir .namada/validator-0` to list available account addresses.
+```
+
+See [`zair claim`](../cli/claim.md) for more details on the claim pipeline.
 
 ## Implementation
 
