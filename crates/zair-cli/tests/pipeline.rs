@@ -15,3 +15,9 @@ fn pipeline_native() {
 fn pipeline_sha256() {
     run_pipeline("sha256");
 }
+
+#[test]
+#[ignore = "Full pipeline: requires network access + heavy computation"]
+fn pipeline_plain() {
+    run_pipeline("plain");
+}

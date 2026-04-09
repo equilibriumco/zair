@@ -26,7 +26,7 @@ pub fn generate_claim_proof(
     let _target_id = target_id_slice(&inputs.target_id, inputs.target_id_len)?;
 
     let (rcv_sha256, cv_sha256) = match inputs.value_commitment_scheme {
-        ValueCommitmentScheme::Native => {
+        ValueCommitmentScheme::Native | ValueCommitmentScheme::Plain => {
             if inputs.rcv_sha256.is_some() {
                 return Err(ClaimProofError::UnexpectedRcvSha256);
             }
@@ -125,7 +125,12 @@ pub fn generate_claim_proof(
             let value_sum = NoteValue::from_raw(inputs.value) - NoteValue::from_raw(0);
             Some(ValueCommitment::derive(value_sum, rcv).to_bytes())
         }
-        ValueCommitmentScheme::Sha256 => None,
+        ValueCommitmentScheme::Sha256 | ValueCommitmentScheme::Plain => None,
+    };
+
+    let plain_value = match inputs.value_commitment_scheme {
+        ValueCommitmentScheme::Plain => Some(inputs.value),
+        ValueCommitmentScheme::Native | ValueCommitmentScheme::Sha256 => None,
     };
 
     // Instances for proof creation.
@@ -133,6 +138,7 @@ pub fn generate_claim_proof(
         inputs.note_commitment_root,
         cv,
         cv_sha256,
+        plain_value,
         inputs.airdrop_nullifier,
         rk_bytes,
         inputs.nullifier_gap_root,
@@ -164,6 +170,7 @@ pub fn generate_claim_proof(
         rk: rk_bytes,
         cv,
         cv_sha256,
+        value: plain_value,
         airdrop_nullifier: inputs.airdrop_nullifier,
     })
 }

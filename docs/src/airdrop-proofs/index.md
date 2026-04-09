@@ -17,7 +17,7 @@ In-circuit (pool-specific details in sub-sections):
 - Snapshot inclusion (note membership of the note commitment root)
 - Snapshot unspentness (gap-tree non-membership against the spent-nullifier gap-root)
 - Airdrop nullifier derivation (public, domain-separated from Zcash nullifier)
-- Value binding via `cv` (native) or `cv_sha256` (custom SHA-256 scheme)
+- Value binding via `cv` (native), `cv_sha256` (SHA-256 scheme), or plain value
 
 Outside the circuit:
 
@@ -63,3 +63,8 @@ When the `sha256` scheme is selected, the circuit computes
 `SHA256(b"Zair" || LE64(value) || rcv_sha256)` and exposes the digest as public input
 instead of the native Pedersen commitment point. Orchard's SHA-256 mode uses the Table16
 gadget from patched `halo2-gadgets` and requires K=17 (vs K=12 for native, and K=11 for standard spend).
+
+**Plain value exposure (optional).**
+When the `plain` scheme is selected, the note value is exposed directly as a single public
+field element with no commitment or randomness. This provides no value privacy but produces
+a simpler proof with fewer public inputs. Both Sapling and Orchard use K=12 for this mode.

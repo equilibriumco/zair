@@ -29,6 +29,8 @@ pub enum ValueCommitmentScheme {
     Native,
     /// SHA-256 commitment (`cv_sha256`).
     Sha256,
+    /// Plain value (no commitment, public value).
+    Plain,
 }
 
 /// Network identifier for an airdrop snapshot.

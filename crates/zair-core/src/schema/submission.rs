@@ -24,6 +24,9 @@ pub struct SaplingSignedClaim {
     #[serde_as(as = "Option<Hex>")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cv_sha256: Option<[u8; 32]>,
+    /// Plain note value, if the active scheme is plain.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value: Option<u64>,
     /// Airdrop nullifier used for double-claim prevention.
     pub airdrop_nullifier: Nullifier,
     /// Hash of this claim's unsigned proof fields.
@@ -55,6 +58,9 @@ pub struct OrchardSignedClaim {
     #[serde_as(as = "Option<Hex>")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cv_sha256: Option<[u8; 32]>,
+    /// Plain note value, if the active scheme is plain.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value: Option<u64>,
     /// Airdrop nullifier used for double-claim prevention.
     pub airdrop_nullifier: Nullifier,
     /// Hash of this claim's unsigned proof fields.

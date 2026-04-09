@@ -23,5 +23,5 @@ The goal of the ZK proofs is protecting **private** information:
 The following information is **public** per claim:
 
 - An airdrop-scoped nullifier.
-- A value commitment (native Pedersen or SHA256).
+- A value commitment (native Pedersen, SHA256, or plain value).
 - A randomized verification key.

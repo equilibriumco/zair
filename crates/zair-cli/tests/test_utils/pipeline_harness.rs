@@ -146,9 +146,9 @@ fn ensure_config() {
         .success();
 }
 
-fn ensure_config_sha256() {
-    let sha256_config = cached("config-sha256.json");
-    if sha256_config.exists() {
+fn ensure_config_derived(scheme: &str, target_scheme: ValueCommitmentScheme) {
+    let derived_config = cached(&format!("config-{scheme}.json"));
+    if derived_config.exists() {
         return;
     }
 
@@ -163,14 +163,14 @@ fn ensure_config_sha256() {
         serde_json::from_str(&text).expect("parse config-native.json");
 
     if let Some(sapling) = config.sapling.as_mut() {
-        sapling.value_commitment_scheme = ValueCommitmentScheme::Sha256;
+        sapling.value_commitment_scheme = target_scheme;
     }
     if let Some(orchard) = config.orchard.as_mut() {
-        orchard.value_commitment_scheme = ValueCommitmentScheme::Sha256;
+        orchard.value_commitment_scheme = target_scheme;
     }
 
-    let output = serde_json::to_string_pretty(&config).expect("serialize sha256 config");
-    fs::write(&sha256_config, output).expect("write config-sha256.json");
+    let output = serde_json::to_string_pretty(&config).expect("serialize derived config");
+    fs::write(&derived_config, output).expect("write derived config");
 }
 
 fn ensure_setup_sapling(scheme: &str) {
@@ -221,8 +221,11 @@ pub fn ensure_claim_run(scheme: &str) {
 
     ensure_seed_and_message();
     ensure_config();
-    if scheme == "sha256" {
-        ensure_config_sha256();
+    match scheme {
+        "native" => {}
+        "sha256" => ensure_config_derived(scheme, ValueCommitmentScheme::Sha256),
+        "plain" => ensure_config_derived(scheme, ValueCommitmentScheme::Plain),
+        other => panic!("unknown scheme: {other}"),
     }
     ensure_setup_sapling(scheme);
     ensure_setup_orchard(scheme);
@@ -365,7 +368,21 @@ pub fn run_pipeline(scheme: &str) {
                     "sha256 scheme: Sapling proof should not have cv"
                 );
             }
-            _ => panic!("unknown scheme: {scheme}"),
+            "plain" => {
+                assert!(
+                    proof.get("value").is_some_and(Value::is_u64),
+                    "plain scheme: Sapling proof should have value"
+                );
+                assert!(
+                    proof.get("cv").is_none_or(Value::is_null),
+                    "plain scheme: Sapling proof should not have cv"
+                );
+                assert!(
+                    proof.get("cv_sha256").is_none_or(Value::is_null),
+                    "plain scheme: Sapling proof should not have cv_sha256"
+                );
+            }
+            other => panic!("unknown scheme: {other}"),
         }
     }
 
@@ -383,7 +400,21 @@ pub fn run_pipeline(scheme: &str) {
                     "sha256 scheme: Orchard proof should have cv_sha256"
                 );
             }
-            _ => panic!("unknown scheme: {scheme}"),
+            "plain" => {
+                assert!(
+                    proof.get("value").is_some_and(Value::is_u64),
+                    "plain scheme: Orchard proof should have value"
+                );
+                assert!(
+                    proof.get("cv").is_none_or(Value::is_null),
+                    "plain scheme: Orchard proof should not have cv"
+                );
+                assert!(
+                    proof.get("cv_sha256").is_none_or(Value::is_null),
+                    "plain scheme: Orchard proof should not have cv_sha256"
+                );
+            }
+            other => panic!("unknown scheme: {other}"),
         }
     }
 

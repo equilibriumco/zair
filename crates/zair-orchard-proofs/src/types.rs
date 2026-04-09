@@ -9,6 +9,8 @@ pub enum ValueCommitmentScheme {
     Native,
     /// Expose only `cv_sha256` (standard SHA-256 digest bytes).
     Sha256,
+    /// Expose the note value directly as a public input (no commitment).
+    Plain,
 }
 
 impl fmt::Display for ValueCommitmentScheme {
@@ -16,6 +18,7 @@ impl fmt::Display for ValueCommitmentScheme {
         match self {
             Self::Native => f.write_str("native"),
             Self::Sha256 => f.write_str("sha256"),
+            Self::Plain => f.write_str("plain"),
         }
     }
 }
@@ -25,6 +28,7 @@ impl From<zair_core::schema::config::ValueCommitmentScheme> for ValueCommitmentS
         match scheme {
             zair_core::schema::config::ValueCommitmentScheme::Native => Self::Native,
             zair_core::schema::config::ValueCommitmentScheme::Sha256 => Self::Sha256,
+            zair_core::schema::config::ValueCommitmentScheme::Plain => Self::Plain,
         }
     }
 }
@@ -34,6 +38,7 @@ impl From<ValueCommitmentScheme> for CircuitValueCommitmentScheme {
         match scheme {
             ValueCommitmentScheme::Native => Self::Native,
             ValueCommitmentScheme::Sha256 => Self::Sha256,
+            ValueCommitmentScheme::Plain => Self::Plain,
         }
     }
 }
@@ -52,6 +57,8 @@ pub struct ClaimProofOutput {
     pub cv: Option<[u8; 32]>,
     /// SHA-256 value commitment digest bytes, when enabled.
     pub cv_sha256: Option<[u8; 32]>,
+    /// Plain note value, when using the `plain` scheme.
+    pub value: Option<u64>,
     /// Airdrop nullifier (canonical `pallas::Base` encoding).
     pub airdrop_nullifier: [u8; 32],
 }

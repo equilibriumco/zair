@@ -21,7 +21,7 @@ For an Orchard note, the circuit proves:
 - Snapshot unspentness: for the note’s private (standard) Orchard nullifier nf_old, the witness provides adjacent bounds (left, right) and the circuit enforces left < nf_old < right,
   plus a Merkle opening of the corresponding gap leaf to the gap-root
 - Double-claim prevention: a public airdrop nullifier is derived from the same nullifier preimage, using an airdrop-specific nullifier basepoint derived from target_id
-- Value binding: a public value commitment matches the note value (native cv or cv_sha256)
+- Value binding: a public value commitment matches the note value (native cv, cv_sha256, or plain value)
 
 ## Public instance
 
@@ -39,6 +39,13 @@ scheme:
 - **SHA-256**: 13 field elements
   1. `rk.x`, `rk.y`
   2. `cv_sha256` as 8 words (`u32::from_be_bytes(digest[4i..4i+4])` for i=0..7)
+  3. `note_anchor`
+  4. `gap_root`
+  5. `airdrop_nf`
+
+- **Plain**: 6 field elements
+  1. `rk.x`, `rk.y`
+  2. `value`: note value (single field element)
   3. `note_anchor`
   4. `gap_root`
   5. `airdrop_nf`
@@ -63,6 +70,7 @@ Spend-style (adapted from Orchard Action):
 - `alpha`: randomizer for rk
 - `rcv`: native value commitment trapdoor (used when value_commitment_scheme = Native)
 - `rcv_sha256`: SHA-256 value commitment randomness (used when value_commitment_scheme = Sha256)
+- Neither `rcv` nor `rcv_sha256` is used when value_commitment_scheme = Plain
 
 ZAIR-specific:
 

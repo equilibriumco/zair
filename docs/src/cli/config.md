@@ -25,8 +25,8 @@ zair config build --network testnet --height 3663119
 | ------------------ | ------------ | ------------------------------------------------------------------- |
 | `--target-sapling` | `ZAIRTEST`   | Sapling target ID for hiding nullifier derivation (exactly 8 bytes) |
 | `--target-orchard` | `ZAIRTEST:O` | Orchard target ID for hiding nullifier derivation (up to 32 bytes)  |
-| `--scheme-sapling` | `native`     | Sapling value commitment scheme: `native` or `sha256`               |
-| `--scheme-orchard` | `native`     | Orchard value commitment scheme: `native` or `sha256`               |
+| `--scheme-sapling` | `native`     | Sapling value commitment scheme: `native`, `sha256`, or `plain`     |
+| `--scheme-orchard` | `native`     | Orchard value commitment scheme: `native`, `sha256`, or `plain`     |
 
 ```admonish info
 When choosing a custom `--target-sapling` for deployment, you must update the constant
