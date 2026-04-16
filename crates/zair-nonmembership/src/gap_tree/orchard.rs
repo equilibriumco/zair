@@ -65,6 +65,10 @@ impl OrchardGapTree {
         self.0.to_bytes()
     }
 
+    pub fn write_to<W: std::io::Write + ?Sized>(&self, writer: &mut W) -> std::io::Result<()> {
+        self.0.write_to(writer)
+    }
+
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, MerklePathError> {
         DenseGapTree::from_bytes(bytes).map(Self)
     }

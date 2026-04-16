@@ -70,6 +70,34 @@ mod tests {
     }
 
     #[test]
+    fn write_to_matches_to_bytes() {
+        let sapling_nullifiers = SanitiseNullifiers::new(vec![
+            Nullifier::from([1_u8; 32]),
+            Nullifier::from([3_u8; 32]),
+        ]);
+        let sapling_tree = SaplingGapTree::from_nullifiers(&sapling_nullifiers)
+            .expect("sapling tree should build");
+        let mut streamed = Vec::new();
+        sapling_tree
+            .write_to(&mut streamed)
+            .expect("sapling write_to should succeed");
+        assert_eq!(streamed, sapling_tree.to_bytes());
+
+        let orchard_nullifiers = SanitiseNullifiers::new(vec![
+            Nullifier::from(pallas::Base::from(1_u64).to_repr()),
+            Nullifier::from(pallas::Base::from(5_u64).to_repr()),
+        ]);
+        let orchard_tree =
+            OrchardGapTree::from_nullifiers_with_progress(&orchard_nullifiers, |_, _| {})
+                .expect("orchard tree should build");
+        let mut streamed = Vec::new();
+        orchard_tree
+            .write_to(&mut streamed)
+            .expect("orchard write_to should succeed");
+        assert_eq!(streamed, orchard_tree.to_bytes());
+    }
+
+    #[test]
     fn gap_tree_roundtrip_preserves_root_and_witnesses() {
         let sapling_nullifiers = SanitiseNullifiers::new(vec![
             Nullifier::from([1_u8; 32]),

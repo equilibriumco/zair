@@ -1,3 +1,5 @@
+use std::io;
+
 use incrementalmerkletree::Level;
 
 use crate::core::{MerklePathError, validate_leaf_count};
@@ -164,15 +166,21 @@ impl DenseGapTree {
         Ok(witness)
     }
 
+    pub(super) fn write_to<W: io::Write + ?Sized>(&self, writer: &mut W) -> io::Result<()> {
+        writer.write_all(&self.leaf_count_u64.to_le_bytes())?;
+        for node in &self.nodes {
+            writer.write_all(node)?;
+        }
+        Ok(())
+    }
+
     #[must_use]
     pub(super) fn to_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::with_capacity(
             SERIALIZED_LEAF_COUNT_BYTES + self.nodes.len() * SERIALIZED_NODE_BYTES,
         );
-        bytes.extend_from_slice(&self.leaf_count_u64.to_le_bytes());
-        for node in &self.nodes {
-            bytes.extend_from_slice(node);
-        }
+        self.write_to(&mut bytes)
+            .expect("writing to Vec<u8> is infallible");
         bytes
     }
 

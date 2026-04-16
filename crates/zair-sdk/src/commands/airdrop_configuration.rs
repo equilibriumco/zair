@@ -1,5 +1,5 @@
 use std::ops::RangeInclusive;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr as _;
 
 use eyre::{Context as _, ContextCompat as _, ensure};
@@ -243,56 +243,69 @@ async fn process_pool(
     write_nullifiers(&nullifiers, &mut writer).await?;
     info!(file = ?store, pool = ?pool, "Saved nullifiers");
 
-    let merkle_root = match pool {
-        Pool::Sapling => {
-            info!(pool = ?pool, progress = "0%", "Building non-membership tree");
-            let sapling_tree = tokio::task::spawn_blocking(move || {
-                SaplingGapTree::from_nullifiers_with_progress(&nullifiers, |current, total| {
-                    if total == 0 {
-                        return;
-                    }
-                    #[allow(
-                        clippy::arithmetic_side_effects,
-                        reason = "Tree build progress percentage uses saturating operations and is guarded against total=0"
-                    )]
-                    let pct = current.saturating_mul(100).saturating_div(total);
-                    info!(pool = ?pool, progress = %format!("{pct}%"), "Building non-membership tree");
-                })
-            })
-            .await??;
-            let root = sapling_tree.root_bytes();
-            if let Some(path) = gap_tree_store {
-                tokio::fs::write(&path, sapling_tree.to_bytes()).await?;
-                info!(pool = ?pool, file = %path.display(), "Saved gap-tree");
+    info!(pool = ?pool, progress = "0%", "Building non-membership tree");
+    // The tree is built, serialized, and written all on the blocking thread so
+    // the multi-GB in-memory representation never crosses the async boundary.
+    let merkle_root = tokio::task::spawn_blocking(move || -> eyre::Result<[u8; 32]> {
+        match pool {
+            Pool::Sapling => {
+                let tree = SaplingGapTree::from_nullifiers_with_progress(
+                    &nullifiers,
+                    progress_logger(pool),
+                )?;
+                let root = tree.root_bytes();
+                if let Some(path) = gap_tree_store {
+                    persist_gap_tree(pool, &path, |w| tree.write_to(w))?;
+                }
+                Ok(root)
             }
-            root
-        }
-        Pool::Orchard => {
-            info!(pool = ?pool, progress = "0%", "Building non-membership tree");
-            let orchard_tree = tokio::task::spawn_blocking(move || {
-                OrchardGapTree::from_nullifiers_with_progress(&nullifiers, |current, total| {
-                    if total == 0 {
-                        return;
-                    }
-                    #[allow(
-                        clippy::arithmetic_side_effects,
-                        reason = "Tree build progress percentage uses saturating operations and is guarded against total=0"
-                    )]
-                    let pct = current.saturating_mul(100).saturating_div(total);
-                    info!(pool = ?pool, progress = %format!("{pct}%"), "Building non-membership tree");
-                })
-            })
-            .await??;
-            let root = orchard_tree.root_bytes();
-            if let Some(path) = gap_tree_store {
-                tokio::fs::write(&path, orchard_tree.to_bytes()).await?;
-                info!(pool = ?pool, file = %path.display(), "Saved gap-tree");
+            Pool::Orchard => {
+                let tree = OrchardGapTree::from_nullifiers_with_progress(
+                    &nullifiers,
+                    progress_logger(pool),
+                )?;
+                let root = tree.root_bytes();
+                if let Some(path) = gap_tree_store {
+                    persist_gap_tree(pool, &path, |w| tree.write_to(w))?;
+                }
+                Ok(root)
             }
-            root
         }
-    };
+    })
+    .await??;
 
     Ok(Some(merkle_root))
+}
+
+fn persist_gap_tree(
+    pool: Pool,
+    path: &Path,
+    write_to: impl FnOnce(&mut dyn std::io::Write) -> std::io::Result<()>,
+) -> eyre::Result<()> {
+    let file = std::fs::File::create(path)
+        .with_context(|| format!("Failed to create gap-tree file {}", path.display()))?;
+    let mut writer = std::io::BufWriter::with_capacity(FILE_BUF_SIZE, file);
+    write_to(&mut writer)
+        .with_context(|| format!("Failed to write gap-tree to {}", path.display()))?;
+    writer
+        .into_inner()
+        .map_err(|e| eyre::eyre!("Failed to flush gap-tree {}: {e}", path.display()))?;
+    info!(pool = ?pool, file = %path.display(), "Saved gap-tree");
+    Ok(())
+}
+
+fn progress_logger(pool: Pool) -> impl FnMut(usize, usize) {
+    move |current: usize, total: usize| {
+        if total == 0 {
+            return;
+        }
+        #[allow(
+            clippy::arithmetic_side_effects,
+            reason = "Tree build progress percentage uses saturating operations and is guarded against total=0"
+        )]
+        let pct = current.saturating_mul(100).saturating_div(total);
+        info!(pool = ?pool, progress = %format!("{pct}%"), "Building non-membership tree");
+    }
 }
 
 #[cfg(test)]
