@@ -91,13 +91,8 @@ pub async fn verify_claim_submission_signature(
     let mut invalid_count = 0_usize;
 
     for (idx, entry) in submission.sapling.iter().enumerate() {
-        let expected_proof_hash = hash_sapling_signed_claim_proof(entry);
-        ensure!(
-            expected_proof_hash == entry.proof_hash,
-            "Sapling proof hash mismatch at index {idx}"
-        );
-
-        let expected_message_hash = message_hashes
+        let proof_hash = hash_sapling_signed_claim_proof(entry);
+        let message_hash = message_hashes
             .sapling_hash(entry.airdrop_nullifier)
             .with_context(|| {
                 format!(
@@ -105,10 +100,6 @@ pub async fn verify_claim_submission_signature(
                     entry.airdrop_nullifier
                 )
             })?;
-        ensure!(
-            expected_message_hash == entry.message_hash,
-            "Sapling message hash mismatch at index {idx}"
-        );
 
         let target_id = sapling_target_id
             .as_deref()
@@ -116,8 +107,8 @@ pub async fn verify_claim_submission_signature(
         let digest = signature_digest(
             Pool::Sapling,
             target_id.as_bytes(),
-            &entry.proof_hash,
-            &entry.message_hash,
+            &proof_hash,
+            &message_hash,
         )?;
 
         let is_valid =
@@ -141,13 +132,8 @@ pub async fn verify_claim_submission_signature(
     }
 
     for (idx, entry) in submission.orchard.iter().enumerate() {
-        let expected_proof_hash = hash_orchard_signed_claim_proof(entry)?;
-        ensure!(
-            expected_proof_hash == entry.proof_hash,
-            "Orchard proof hash mismatch at index {idx}"
-        );
-
-        let expected_message_hash = message_hashes
+        let proof_hash = hash_orchard_signed_claim_proof(entry)?;
+        let message_hash = message_hashes
             .orchard_hash(entry.airdrop_nullifier)
             .with_context(|| {
                 format!(
@@ -155,10 +141,6 @@ pub async fn verify_claim_submission_signature(
                     entry.airdrop_nullifier
                 )
             })?;
-        ensure!(
-            expected_message_hash == entry.message_hash,
-            "Orchard message hash mismatch at index {idx}"
-        );
 
         let target_id = orchard_target_id
             .as_deref()
@@ -166,8 +148,8 @@ pub async fn verify_claim_submission_signature(
         let digest = signature_digest(
             Pool::Orchard,
             target_id.as_bytes(),
-            &entry.proof_hash,
-            &entry.message_hash,
+            &proof_hash,
+            &message_hash,
         )?;
 
         let is_valid =
@@ -209,14 +191,13 @@ mod tests {
 
     use serde::Serialize;
     use tempfile::tempdir;
-    use zair_core::base::{Nullifier, hash_message};
+    use zair_core::base::Nullifier;
     use zair_core::schema::config::{
         AirdropConfiguration, AirdropNetwork, SaplingSnapshot, ValueCommitmentScheme,
     };
     use zair_core::schema::submission::{ClaimSubmission, OrchardSignedClaim, SaplingSignedClaim};
 
     use super::*;
-    use crate::commands::signature_digest::hash_sapling_signed_claim_proof;
 
     fn write_json<T: Serialize>(path: &Path, value: &T) {
         let bytes = serde_json::to_vec_pretty(value).expect("serialize json");
@@ -238,19 +219,15 @@ mod tests {
     }
 
     fn sample_sapling_claim() -> SaplingSignedClaim {
-        let mut claim = SaplingSignedClaim {
+        SaplingSignedClaim {
             zkproof: [11_u8; 192],
             rk: [22_u8; 32],
             cv: Some([33_u8; 32]),
             cv_sha256: None,
             value: None,
             airdrop_nullifier: Nullifier::from([44_u8; 32]),
-            proof_hash: [0_u8; 32],
-            message_hash: [0_u8; 32],
             spend_auth_sig: [0_u8; 64],
-        };
-        claim.proof_hash = hash_sapling_signed_claim_proof(&claim);
-        claim
+        }
     }
 
     #[tokio::test]
@@ -278,41 +255,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn verify_rejects_sapling_proof_hash_mismatch_before_signature_check() {
-        let dir = tempdir().expect("tempdir");
-        let submission_path = dir.path().join("submission.json");
-        let config_path = dir.path().join("config.json");
-        let message_path = dir.path().join("message.bin");
-        std::fs::write(&message_path, b"test-message").expect("write message file");
-
-        let mut claim = sample_sapling_claim();
-        claim.proof_hash = [99_u8; 32];
-        claim.message_hash = hash_message(b"test-message");
-
-        let submission = ClaimSubmission {
-            sapling: vec![claim],
-            orchard: vec![],
-        };
-        write_json(&submission_path, &submission);
-        write_json(&config_path, &sapling_config());
-
-        let err = verify_claim_submission_signature(
-            submission_path,
-            Some(message_path),
-            None,
-            config_path,
-        )
-        .await
-        .expect_err("verification must fail for proof hash mismatch");
-
-        assert!(
-            err.to_string()
-                .contains("Sapling proof hash mismatch at index 0"),
-            "{err:?}"
-        );
-    }
-
-    #[tokio::test]
     async fn verify_rejects_orchard_claims_when_config_has_no_orchard_pool() {
         let dir = tempdir().expect("tempdir");
         let submission_path = dir.path().join("submission.json");
@@ -327,8 +269,6 @@ mod tests {
                 cv_sha256: None,
                 value: None,
                 airdrop_nullifier: Nullifier::from([5_u8; 32]),
-                proof_hash: [6_u8; 32],
-                message_hash: [7_u8; 32],
                 spend_auth_sig: [8_u8; 64],
             }],
         };

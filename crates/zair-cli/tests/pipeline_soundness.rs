@@ -76,28 +76,6 @@ fn soundness_tamper_orchard_cv() {
 
 #[test]
 #[ignore = "Full pipeline: requires network access + heavy computation"]
-fn soundness_tamper_proof_hash() {
-    ensure_claim_run("native");
-    let mut data = load_json(&submission_path("native"));
-    flip_hex_byte(&mut data["sapling"][0]["proof_hash"], 0);
-    let tampered = write_tampered("tampered-submission-proof-hash.json", &data);
-    let stderr = verify_signature_failure_stderr("native", &tampered, &message_path());
-    assert_contains(&stderr, "Sapling proof hash mismatch");
-}
-
-#[test]
-#[ignore = "Full pipeline: requires network access + heavy computation"]
-fn soundness_tamper_message_hash() {
-    ensure_claim_run("native");
-    let mut data = load_json(&submission_path("native"));
-    flip_hex_byte(&mut data["sapling"][0]["message_hash"], 0);
-    let tampered = write_tampered("tampered-submission-message-hash.json", &data);
-    let stderr = verify_signature_failure_stderr("native", &tampered, &message_path());
-    assert_contains(&stderr, "Sapling message hash mismatch");
-}
-
-#[test]
-#[ignore = "Full pipeline: requires network access + heavy computation"]
 fn soundness_tamper_spend_auth_sig() {
     ensure_claim_run("native");
     let mut data = load_json(&submission_path("native"));
