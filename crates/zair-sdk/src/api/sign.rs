@@ -234,42 +234,45 @@ pub async fn sign_claim_submission_from_bytes(
         }
     }
 
-    let target_id = sapling_target_id
-        .as_deref()
-        .ok_or_else(|| SignError::MissingSigningKey("Sapling".to_string()))?;
-    let keys = sapling_keys
-        .as_ref()
-        .ok_or_else(|| SignError::MissingSigningKey("Sapling".to_string()))?;
-
     let mut sapling = Vec::with_capacity(proofs.sapling_proofs.len());
-    for proof in &proofs.sapling_proofs {
-        let secret = sapling_secret_by_nf
-            .get(&proof.airdrop_nullifier)
-            .ok_or_else(|| {
-                SignError::MissingSecret("Sapling".to_string(), proof.airdrop_nullifier)
-            })?;
-        let msg_hash = message_hashes
-            .sapling_hash(proof.airdrop_nullifier)
-            .ok_or_else(|| {
-                SignError::MissingMessageHash("Sapling".to_string(), proof.airdrop_nullifier)
-            })?;
-        let proof_hash = hash_sapling_proof(proof);
-        let digest = signature_digest(Pool::Sapling, target_id.as_bytes(), &proof_hash, &msg_hash)
-            .map_err(|e| SignError::DigestError("Sapling".to_string(), e.to_string()))?;
+    if !proofs.sapling_proofs.is_empty() {
+        let target_id = sapling_target_id
+            .as_deref()
+            .ok_or_else(|| SignError::MissingSigningKey("Sapling".to_string()))?;
+        let keys = sapling_keys
+            .as_ref()
+            .ok_or_else(|| SignError::MissingSigningKey("Sapling".to_string()))?;
 
-        let spend_auth_sig = sapling::sign_claim(proof, secret, keys, &digest)
-            .map_err(|e| SignError::SigningError("Sapling".to_string(), e.to_string()))?;
-        sapling.push(SaplingSignedClaim {
-            zkproof: proof.zkproof,
-            rk: proof.rk,
-            cv: proof.cv,
-            cv_sha256: proof.cv_sha256,
-            value: proof.value,
-            airdrop_nullifier: proof.airdrop_nullifier,
-            proof_hash,
-            message_hash: msg_hash,
-            spend_auth_sig,
-        });
+        for proof in &proofs.sapling_proofs {
+            let secret = sapling_secret_by_nf
+                .get(&proof.airdrop_nullifier)
+                .ok_or_else(|| {
+                    SignError::MissingSecret("Sapling".to_string(), proof.airdrop_nullifier)
+                })?;
+            let msg_hash = message_hashes
+                .sapling_hash(proof.airdrop_nullifier)
+                .ok_or_else(|| {
+                    SignError::MissingMessageHash("Sapling".to_string(), proof.airdrop_nullifier)
+                })?;
+            let proof_hash = hash_sapling_proof(proof);
+            let digest =
+                signature_digest(Pool::Sapling, target_id.as_bytes(), &proof_hash, &msg_hash)
+                    .map_err(|e| SignError::DigestError("Sapling".to_string(), e.to_string()))?;
+
+            let spend_auth_sig = sapling::sign_claim(proof, secret, keys, &digest)
+                .map_err(|e| SignError::SigningError("Sapling".to_string(), e.to_string()))?;
+            sapling.push(SaplingSignedClaim {
+                zkproof: proof.zkproof,
+                rk: proof.rk,
+                cv: proof.cv,
+                cv_sha256: proof.cv_sha256,
+                value: proof.value,
+                airdrop_nullifier: proof.airdrop_nullifier,
+                proof_hash,
+                message_hash: msg_hash,
+                spend_auth_sig,
+            });
+        }
     }
 
     let mut orchard_secret_by_nf = BTreeMap::new();
@@ -281,43 +284,46 @@ pub async fn sign_claim_submission_from_bytes(
         }
     }
 
-    let target_id = orchard_target_id
-        .as_deref()
-        .ok_or_else(|| SignError::MissingSigningKey("Orchard".to_string()))?;
-    let key = orchard_key
-        .as_ref()
-        .ok_or_else(|| SignError::MissingSigningKey("Orchard".to_string()))?;
-
     let mut orchard = Vec::with_capacity(proofs.orchard_proofs.len());
-    for proof in &proofs.orchard_proofs {
-        let secret = orchard_secret_by_nf
-            .get(&proof.airdrop_nullifier)
-            .ok_or_else(|| {
-                SignError::MissingSecret("Orchard".to_string(), proof.airdrop_nullifier)
-            })?;
-        let msg_hash = message_hashes
-            .orchard_hash(proof.airdrop_nullifier)
-            .ok_or_else(|| {
-                SignError::MissingMessageHash("Orchard".to_string(), proof.airdrop_nullifier)
-            })?;
-        let proof_hash = hash_orchard_proof(proof)
-            .map_err(|e| SignError::DigestError("Orchard".to_string(), e.to_string()))?;
-        let digest = signature_digest(Pool::Orchard, target_id.as_bytes(), &proof_hash, &msg_hash)
-            .map_err(|e| SignError::DigestError("Orchard".to_string(), e.to_string()))?;
+    if !proofs.orchard_proofs.is_empty() {
+        let target_id = orchard_target_id
+            .as_deref()
+            .ok_or_else(|| SignError::MissingSigningKey("Orchard".to_string()))?;
+        let key = orchard_key
+            .as_ref()
+            .ok_or_else(|| SignError::MissingSigningKey("Orchard".to_string()))?;
 
-        let spend_auth_sig = orchard::sign_claim(proof, secret, key, &digest)
-            .map_err(|e| SignError::SigningError("Orchard".to_string(), e.to_string()))?;
-        orchard.push(OrchardSignedClaim {
-            zkproof: proof.zkproof.clone(),
-            rk: proof.rk,
-            cv: proof.cv,
-            cv_sha256: proof.cv_sha256,
-            value: proof.value,
-            airdrop_nullifier: proof.airdrop_nullifier,
-            proof_hash,
-            message_hash: msg_hash,
-            spend_auth_sig,
-        });
+        for proof in &proofs.orchard_proofs {
+            let secret = orchard_secret_by_nf
+                .get(&proof.airdrop_nullifier)
+                .ok_or_else(|| {
+                    SignError::MissingSecret("Orchard".to_string(), proof.airdrop_nullifier)
+                })?;
+            let msg_hash = message_hashes
+                .orchard_hash(proof.airdrop_nullifier)
+                .ok_or_else(|| {
+                    SignError::MissingMessageHash("Orchard".to_string(), proof.airdrop_nullifier)
+                })?;
+            let proof_hash = hash_orchard_proof(proof)
+                .map_err(|e| SignError::DigestError("Orchard".to_string(), e.to_string()))?;
+            let digest =
+                signature_digest(Pool::Orchard, target_id.as_bytes(), &proof_hash, &msg_hash)
+                    .map_err(|e| SignError::DigestError("Orchard".to_string(), e.to_string()))?;
+
+            let spend_auth_sig = orchard::sign_claim(proof, secret, key, &digest)
+                .map_err(|e| SignError::SigningError("Orchard".to_string(), e.to_string()))?;
+            orchard.push(OrchardSignedClaim {
+                zkproof: proof.zkproof.clone(),
+                rk: proof.rk,
+                cv: proof.cv,
+                cv_sha256: proof.cv_sha256,
+                value: proof.value,
+                airdrop_nullifier: proof.airdrop_nullifier,
+                proof_hash,
+                message_hash: msg_hash,
+                spend_auth_sig,
+            });
+        }
     }
 
     let submission = ClaimSubmission { sapling, orchard };
