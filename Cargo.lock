@@ -3848,6 +3848,7 @@ dependencies = [
  "jubjub",
  "orchard",
  "pasta_curves",
+ "rayon",
  "sapling-crypto",
  "thiserror 2.0.18",
  "zair-core",

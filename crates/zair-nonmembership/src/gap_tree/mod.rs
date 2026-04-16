@@ -98,6 +98,24 @@ mod tests {
     }
 
     #[test]
+    fn progress_ticks_are_monotonic_and_capped() {
+        // 2000 leaves crosses PAR_CHUNK_MIN_LEN so the parallel path fires.
+        let chain = SanitiseNullifiers::new(
+            (1_u64..=2_000)
+                .map(|v| Nullifier::from(pallas::Base::from(v).to_repr()))
+                .collect(),
+        );
+        let mut ticks: Vec<usize> = Vec::new();
+        OrchardGapTree::from_nullifiers_with_progress(&chain, |current, total| {
+            assert!(current <= total, "current {current} exceeds total {total}");
+            ticks.push(current.saturating_mul(100).saturating_div(total));
+        })
+        .expect("orchard tree should build");
+        assert!(ticks.is_sorted(), "ticks not monotonic: {ticks:?}");
+        assert!(ticks.len() <= 11, "too many ticks: {ticks:?}");
+    }
+
+    #[test]
     fn gap_tree_roundtrip_preserves_root_and_witnesses() {
         let sapling_nullifiers = SanitiseNullifiers::new(vec![
             Nullifier::from([1_u8; 32]),

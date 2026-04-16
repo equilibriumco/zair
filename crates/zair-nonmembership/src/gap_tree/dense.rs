@@ -1,6 +1,7 @@
 use std::io;
 
 use incrementalmerkletree::Level;
+use rayon::prelude::*;
 
 use crate::core::{MerklePathError, validate_leaf_count};
 use crate::node::NON_MEMBERSHIP_TREE_DEPTH;
@@ -8,6 +9,41 @@ use crate::node::NON_MEMBERSHIP_TREE_DEPTH;
 const SERIALIZED_LEAF_COUNT_BYTES: usize = 8;
 const SERIALIZED_NODE_BYTES: usize = 32;
 const TREE_LEVEL_COUNT: usize = 33;
+
+/// Minimum items per rayon task; keeps narrow upper levels serial.
+pub(super) const PAR_CHUNK_MIN_LEN: usize = 1024;
+
+/// Build `leaf_count` items in parallel, batched in deciles so `on_progress`
+/// fires once per batch from the calling thread. Callback stays monotonic.
+pub(super) fn build_leaves_batched<T, F, E>(
+    leaf_count: usize,
+    mut on_progress: impl FnMut(usize, usize),
+    item: F,
+) -> Result<Vec<T>, E>
+where
+    T: Send,
+    F: Fn(usize) -> Result<T, E> + Sync,
+    E: Send,
+{
+    on_progress(0, leaf_count);
+    let mut leaves = Vec::with_capacity(leaf_count);
+    let mut start = 0_usize;
+    for pct in (10..=100).step_by(10) {
+        let end = leaf_count.saturating_mul(pct).div_ceil(100);
+        if end <= start {
+            continue;
+        }
+        let batch: Vec<T> = (start..end)
+            .into_par_iter()
+            .with_min_len(PAR_CHUNK_MIN_LEN)
+            .map(&item)
+            .collect::<Result<_, _>>()?;
+        leaves.extend(batch);
+        on_progress(end, leaf_count);
+        start = end;
+    }
+    Ok(leaves)
+}
 
 fn level_layout(
     leaf_count: usize,
@@ -39,10 +75,10 @@ pub(super) struct DenseGapTree {
 }
 
 impl DenseGapTree {
-    pub(super) fn from_leaves<T: Copy>(
+    pub(super) fn from_leaves<T: Copy + Send + Sync>(
         leaves: Vec<T>,
         empty_root: impl Fn(Level) -> T,
-        combine: impl Fn(Level, &T, &T) -> T,
+        combine: impl Fn(Level, &T, &T) -> T + Sync,
         to_bytes: impl Fn(T) -> [u8; 32],
     ) -> Result<Self, MerklePathError> {
         let leaf_count = leaves.len();
@@ -56,13 +92,16 @@ impl DenseGapTree {
 
         let mut current = leaves;
         for level in 0..NON_MEMBERSHIP_TREE_DEPTH {
-            let mut next = Vec::with_capacity(level_widths[usize::from(level) + 1]);
             let empty = empty_root(Level::from(level));
-            for pair_start in (0..current.len()).step_by(2) {
-                let left = current[pair_start];
-                let right = current.get(pair_start + 1).copied().unwrap_or(empty);
-                next.push(combine(Level::from(level), &left, &right));
-            }
+            let next: Vec<T> = current
+                .par_chunks(2)
+                .with_min_len(PAR_CHUNK_MIN_LEN)
+                .map(|pair| {
+                    let left = pair[0];
+                    let right = pair.get(1).copied().unwrap_or(empty);
+                    combine(Level::from(level), &left, &right)
+                })
+                .collect();
             nodes.extend(next.iter().copied().map(&to_bytes));
             current = next;
         }

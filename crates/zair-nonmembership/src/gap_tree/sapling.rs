@@ -1,8 +1,8 @@
 use incrementalmerkletree::Hashable as _;
 use zair_core::base::SanitiseNullifiers;
 
-use super::dense::DenseGapTree;
-use crate::core::{MerklePathError, should_report_progress};
+use super::dense::{DenseGapTree, build_leaves_batched};
+use crate::core::MerklePathError;
 use crate::node::NonMembershipNode;
 use crate::pool::sapling::sapling_gap_bounds;
 
@@ -16,19 +16,13 @@ impl SaplingGapTree {
 
     pub fn from_nullifiers_with_progress(
         nullifiers: &SanitiseNullifiers,
-        mut on_progress: impl FnMut(usize, usize),
+        on_progress: impl FnMut(usize, usize),
     ) -> Result<Self, MerklePathError> {
         let leaf_count = nullifiers.len().saturating_add(1);
-        let mut leaves = Vec::with_capacity(leaf_count);
-        let mut last_pct = 0_usize;
-        on_progress(0, leaf_count);
-        for gap_idx in 0..leaf_count {
+        let leaves = build_leaves_batched(leaf_count, on_progress, |gap_idx| {
             let (left, right) = sapling_gap_bounds(nullifiers, gap_idx)?;
-            leaves.push(NonMembershipNode::leaf_from_nullifiers(&left, &right));
-            if should_report_progress(gap_idx.saturating_add(1), leaf_count, &mut last_pct) {
-                on_progress(gap_idx.saturating_add(1), leaf_count);
-            }
-        }
+            Ok::<_, MerklePathError>(NonMembershipNode::leaf_from_nullifiers(&left, &right))
+        })?;
         DenseGapTree::from_leaves(
             leaves,
             NonMembershipNode::empty_root,
