@@ -117,16 +117,13 @@ pub async fn build_airdrop_configuration(
     let (sapling_nf_root, orchard_nf_root) = tokio::try_join!(sapling_handle, orchard_handle)?;
 
     // Note commitment roots needed for proving note existence.
-    let upper_limit: u32 = config
+    let snapshot_height_u32: u32 = config
         .snapshot_height
         .try_into()
         .context("Snapshot height too large")?;
-    let upper_limit = upper_limit
-        .checked_add(1)
-        .context("Snapshot height overflowed when adding 1")?;
 
     let note_commitment_roots = lightwalletd
-        .commitment_tree_anchors(BlockHeight::from_u32(upper_limit))
+        .commitment_tree_anchors(BlockHeight::from_u32(snapshot_height_u32))
         .await
         .context("Failed to fetch commitment tree roots from lightwalletd")?;
 
