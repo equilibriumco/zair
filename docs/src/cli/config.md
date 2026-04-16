@@ -38,6 +38,18 @@ in
 `crates/zair-sapling-circuit/src/circuit.rs`
 
 as well, and run a trusted setup for Sapling using the new custom circuit.
+
+If `sapling.target_id` in the config and this constant disagree, proof
+generation fails with "constraint not satisfied".
+```
+
+```admonish warning
+The defaults `ZAIRTEST` and `ZAIRTEST:O` are for development and testing.
+Production airdrops should pick a target ID unique to the airdrop. If two
+airdrops share the same target ID, their airdrop nullifiers match for the
+same Zcash note, which makes submissions linkable across the two airdrops.
+Double-claiming is still prevented: each airdrop has its own nullifier set
+and claims are bound to the target-chain message.
 ```
 
 ### Output files

@@ -41,7 +41,6 @@ use crate::constants::{
     MERKLE_DEPTH_ORCHARD, OrchardCommitDomains, OrchardFixedBases, OrchardFixedBasesFull,
     OrchardHashDomains, T_P,
 };
-use crate::note::{RandomSeed, Rho};
 use crate::value::{NoteValue, ValueCommitTrapdoor, ValueCommitment};
 
 /// Circuit size parameter for the native value-commitment scheme (2^12 rows).
@@ -1207,65 +1206,4 @@ fn assert_order_255(
             Ok(())
         },
     )
-}
-
-impl Circuit {
-    /// Helper constructor from basic note components.
-    ///
-    /// This is intended for external tooling: it derives `psi` and `rcm` from `rseed` and `rho`,
-    /// and constructs a circuit witness.
-    pub fn from_parts(
-        note_path: [pallas::Base; MERKLE_DEPTH_ORCHARD],
-        note_pos: u32,
-        g_d: pallas::Affine,
-        pk_d: pallas::Affine,
-        value: NoteValue,
-        rho_bytes: [u8; 32],
-        rseed_bytes: [u8; 32],
-        alpha: pallas::Scalar,
-        ak_p: pallas::Affine,
-        nk: pallas::Base,
-        rivk: pallas::Scalar,
-        rcv: ValueCommitTrapdoor,
-        left: pallas::Base,
-        right: pallas::Base,
-        gap_path: [pallas::Base; MERKLE_DEPTH_ORCHARD],
-        gap_pos: u32,
-    ) -> Option<Self> {
-        if bool::from(g_d.coordinates().is_none()) ||
-            bool::from(pk_d.coordinates().is_none()) ||
-            bool::from(ak_p.coordinates().is_none())
-        {
-            return None;
-        }
-
-        let rho = Option::<Rho>::from(Rho::from_bytes(&rho_bytes))?;
-        let rseed = Option::<RandomSeed>::from(RandomSeed::from_bytes(rseed_bytes, &rho))?;
-        let psi = rseed.psi(&rho);
-        let rcm = rseed.rcm_scalar(&rho);
-
-        Some(Self {
-            target_id: [0u8; 32],
-            target_id_len: 0,
-            note_path: Value::known(note_path),
-            note_pos: Value::known(note_pos),
-            g_d: Value::known(g_d),
-            pk_d: Value::known(pk_d),
-            value: Value::known(value),
-            rho: Value::known(rho.into_inner()),
-            psi: Value::known(psi),
-            rcm: Value::known(rcm),
-            alpha: Value::known(alpha),
-            ak_p: Value::known(ak_p),
-            nk: Value::known(nk),
-            rivk: Value::known(rivk),
-            rcv: Value::known(rcv),
-            value_commitment_scheme: ValueCommitmentScheme::Native,
-            rcv_sha256: Value::unknown(),
-            left: Value::known(left),
-            right: Value::known(right),
-            gap_path: Value::known(gap_path),
-            gap_pos: Value::known(gap_pos),
-        })
-    }
 }

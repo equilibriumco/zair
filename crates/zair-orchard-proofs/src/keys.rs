@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 
 use halo2_proofs::plonk;
+#[cfg(feature = "verify")]
 use halo2_proofs::plonk::VerifyingKey;
 use halo2_proofs::poly::commitment::Params;
 use pasta_curves::vesta;
@@ -14,8 +15,9 @@ use crate::types::ValueCommitmentScheme;
 
 #[derive(Debug)]
 pub struct Keys {
+    #[cfg(feature = "verify")]
     pub(crate) vk: VerifyingKey<vesta::Affine>,
-    #[cfg_attr(feature = "verify", allow(dead_code))]
+    #[cfg(feature = "prove")]
     pub(crate) pk: plonk::ProvingKey<vesta::Affine>,
 }
 
@@ -39,9 +41,15 @@ fn keygen(
     circuit.value_commitment_scheme = circuit_scheme;
 
     let vk = plonk::keygen_vk(params, &circuit)?;
+    #[cfg(feature = "prove")]
     let pk = plonk::keygen_pk(params, vk.clone(), &circuit)?;
 
-    Ok(Keys { vk, pk })
+    Ok(Keys {
+        #[cfg(feature = "verify")]
+        vk,
+        #[cfg(feature = "prove")]
+        pk,
+    })
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
