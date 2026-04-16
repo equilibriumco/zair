@@ -14,6 +14,12 @@ fn sapling_nf(v: u8) -> Nullifier {
     Nullifier::from(bytes)
 }
 
+fn sapling_nf_u32(v: u32) -> Nullifier {
+    let mut bytes = [0_u8; 32];
+    bytes[..4].copy_from_slice(&v.to_le_bytes());
+    Nullifier::from(bytes)
+}
+
 fn orchard_nf(v: u64) -> Nullifier {
     Nullifier::from(pallas::Base::from(v).to_repr())
 }
@@ -88,4 +94,35 @@ fn orchard_dense_matches_sparse() {
             .expect("sparse orchard witness should build");
         assert_eq!(dense_witness, sparse_witness);
     }
+}
+
+/// Sized above `PAR_CHUNK_MIN_LEN` (1024) so parallel leaf + first inner
+/// levels run; sparse builder acts as the correctness oracle.
+const LARGE_FIXTURE_LEN: u32 = 4_000;
+
+#[test]
+fn sapling_dense_matches_sparse_large_fixture() {
+    let chain = SanitiseNullifiers::new((1..=LARGE_FIXTURE_LEN).map(sapling_nf_u32).collect());
+    let dense_tree = SaplingGapTree::from_nullifiers_with_progress(&chain, |_, _| {})
+        .expect("dense sapling tree should build");
+    let empty_user = SanitiseNullifiers::new(vec![]);
+    let (sparse_tree, _) = NonMembershipTree::from_chain_and_user_nullifiers(&chain, &empty_user)
+        .expect("sparse sapling tree should build");
+    assert_eq!(dense_tree.root_bytes(), sparse_tree.root().to_bytes());
+}
+
+#[test]
+fn orchard_dense_matches_sparse_large_fixture() {
+    let chain = SanitiseNullifiers::new(
+        (1_u64..=u64::from(LARGE_FIXTURE_LEN))
+            .map(orchard_nf)
+            .collect(),
+    );
+    let dense_tree = OrchardGapTree::from_nullifiers_with_progress(&chain, |_, _| {})
+        .expect("dense orchard tree should build");
+    let empty_user = SanitiseNullifiers::new(vec![]);
+    let (sparse_tree, _) =
+        OrchardNonMembershipTree::from_chain_and_user_nullifiers(&chain, &empty_user)
+            .expect("sparse orchard tree should build");
+    assert_eq!(dense_tree.root_bytes(), sparse_tree.root_bytes());
 }

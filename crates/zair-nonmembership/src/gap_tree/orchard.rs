@@ -2,8 +2,8 @@ use incrementalmerkletree::Hashable as _;
 use orchard::tree::MerkleHashOrchard;
 use zair_core::base::SanitiseNullifiers;
 
-use super::dense::DenseGapTree;
-use crate::core::{MerklePathError, should_report_progress};
+use super::dense::{DenseGapTree, build_leaves_batched};
+use crate::core::MerklePathError;
 use crate::pool::orchard::{
     ORCHARD_LEAF_HASH_LEVEL, canonicalize_orchard_chain_nullifiers, orchard_gap_bounds,
     orchard_max_nullifier, orchard_node_from_bytes,
@@ -15,7 +15,7 @@ pub struct OrchardGapTree(DenseGapTree);
 impl OrchardGapTree {
     pub fn from_nullifiers_with_progress(
         nullifiers: &SanitiseNullifiers,
-        mut on_progress: impl FnMut(usize, usize),
+        on_progress: impl FnMut(usize, usize),
     ) -> Result<Self, MerklePathError> {
         let chain = canonicalize_orchard_chain_nullifiers("chain", nullifiers)?;
         let min_node = orchard_node_from_bytes(*zair_core::base::Nullifier::MIN.as_ref()).ok_or(
@@ -26,20 +26,14 @@ impl OrchardGapTree {
         )?;
 
         let leaf_count = chain.len().saturating_add(1);
-        let mut leaves = Vec::with_capacity(leaf_count);
-        let mut last_pct = 0_usize;
-        on_progress(0, leaf_count);
-        for gap_idx in 0..leaf_count {
+        let leaves = build_leaves_batched(leaf_count, on_progress, |gap_idx| {
             let gap = orchard_gap_bounds(&chain, gap_idx, min_node, max_node)?;
-            leaves.push(MerkleHashOrchard::combine(
+            Ok::<_, MerklePathError>(MerkleHashOrchard::combine(
                 ORCHARD_LEAF_HASH_LEVEL.into(),
                 &gap.left_node,
                 &gap.right_node,
-            ));
-            if should_report_progress(gap_idx.saturating_add(1), leaf_count, &mut last_pct) {
-                on_progress(gap_idx.saturating_add(1), leaf_count);
-            }
-        }
+            ))
+        })?;
         DenseGapTree::from_leaves(
             leaves,
             MerkleHashOrchard::empty_root,
@@ -63,6 +57,10 @@ impl OrchardGapTree {
     #[must_use]
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.to_bytes()
+    }
+
+    pub fn write_to<W: std::io::Write + ?Sized>(&self, writer: &mut W) -> std::io::Result<()> {
+        self.0.write_to(writer)
     }
 
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, MerklePathError> {

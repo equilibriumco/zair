@@ -13,6 +13,7 @@ incrementalmerkletree = { workspace = true }
 jubjub = { workspace = true }
 orchard = { workspace = true }
 pasta_curves = { workspace = true }
+rayon = { workspace = true }
 sapling = { workspace = true }
 thiserror = { workspace = true }
 zair-core = { workspace = true }

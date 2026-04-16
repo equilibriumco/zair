@@ -11,6 +11,7 @@
     reason = "Public API is crate-internal plumbing for cache persistence; verbose API docs add noise"
 )]
 
+// TODO: add traits for from_nullifiers_with_progress and from_bytes (PR #46).
 mod dense;
 mod orchard;
 mod sapling;
@@ -67,6 +68,52 @@ mod tests {
             witness_bytes(&decoded, 1).expect("witness should exist for middle gap"),
             witness_bytes(tree, 1).expect("witness should exist for middle gap")
         );
+    }
+
+    #[test]
+    fn write_to_matches_to_bytes() {
+        let sapling_nullifiers = SanitiseNullifiers::new(vec![
+            Nullifier::from([1_u8; 32]),
+            Nullifier::from([3_u8; 32]),
+        ]);
+        let sapling_tree = SaplingGapTree::from_nullifiers(&sapling_nullifiers)
+            .expect("sapling tree should build");
+        let mut streamed = Vec::new();
+        sapling_tree
+            .write_to(&mut streamed)
+            .expect("sapling write_to should succeed");
+        assert_eq!(streamed, sapling_tree.to_bytes());
+
+        let orchard_nullifiers = SanitiseNullifiers::new(vec![
+            Nullifier::from(pallas::Base::from(1_u64).to_repr()),
+            Nullifier::from(pallas::Base::from(5_u64).to_repr()),
+        ]);
+        let orchard_tree =
+            OrchardGapTree::from_nullifiers_with_progress(&orchard_nullifiers, |_, _| {})
+                .expect("orchard tree should build");
+        let mut streamed = Vec::new();
+        orchard_tree
+            .write_to(&mut streamed)
+            .expect("orchard write_to should succeed");
+        assert_eq!(streamed, orchard_tree.to_bytes());
+    }
+
+    #[test]
+    fn progress_ticks_are_monotonic_and_capped() {
+        // 2000 leaves crosses PAR_CHUNK_MIN_LEN so the parallel path fires.
+        let chain = SanitiseNullifiers::new(
+            (1_u64..=2_000)
+                .map(|v| Nullifier::from(pallas::Base::from(v).to_repr()))
+                .collect(),
+        );
+        let mut ticks: Vec<usize> = Vec::new();
+        OrchardGapTree::from_nullifiers_with_progress(&chain, |current, total| {
+            assert!(current <= total, "current {current} exceeds total {total}");
+            ticks.push(current.saturating_mul(100).saturating_div(total));
+        })
+        .expect("orchard tree should build");
+        assert!(ticks.is_sorted(), "ticks not monotonic: {ticks:?}");
+        assert!(ticks.len() <= 11, "too many ticks: {ticks:?}");
     }
 
     #[test]
