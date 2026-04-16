@@ -243,7 +243,6 @@ async fn process_pool(
     write_nullifiers(&nullifiers, &mut writer).await?;
     info!(file = ?store, pool = ?pool, "Saved nullifiers");
 
-    info!(pool = ?pool, progress = "0%", "Building non-membership tree");
     // The tree is built, serialized, and written all on the blocking thread so
     // the multi-GB in-memory representation never crosses the async boundary.
     let merkle_root = tokio::task::spawn_blocking(move || -> eyre::Result<[u8; 32]> {

@@ -11,6 +11,7 @@
     reason = "Public API is crate-internal plumbing for cache persistence; verbose API docs add noise"
 )]
 
+// TODO: add traits for from_nullifiers_with_progress and from_bytes (PR #46).
 mod dense;
 mod orchard;
 mod sapling;
