@@ -220,6 +220,7 @@ fn verify_signature(
         &proof.rk,
         proof.cv,
         proof.cv_sha256,
+        proof.value,
         proof.airdrop_nullifier.into(),
     );
 

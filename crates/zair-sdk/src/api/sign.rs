@@ -268,8 +268,6 @@ pub async fn sign_claim_submission_from_bytes(
                 cv_sha256: proof.cv_sha256,
                 value: proof.value,
                 airdrop_nullifier: proof.airdrop_nullifier,
-                proof_hash,
-                message_hash: msg_hash,
                 spend_auth_sig,
             });
         }
@@ -319,8 +317,6 @@ pub async fn sign_claim_submission_from_bytes(
                 cv_sha256: proof.cv_sha256,
                 value: proof.value,
                 airdrop_nullifier: proof.airdrop_nullifier,
-                proof_hash,
-                message_hash: msg_hash,
                 spend_auth_sig,
             });
         }

@@ -440,14 +440,6 @@ pub fn run_pipeline(scheme: &str) {
             "signed claim should have spend_auth_sig"
         );
         assert!(
-            claim.get("proof_hash").is_some_and(Value::is_string),
-            "signed claim should have proof_hash"
-        );
-        assert!(
-            claim.get("message_hash").is_some_and(Value::is_string),
-            "signed claim should have message_hash"
-        );
-        assert!(
             claim.get("airdrop_nullifier").is_some_and(Value::is_string),
             "signed claim should have airdrop_nullifier"
         );

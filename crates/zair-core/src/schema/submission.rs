@@ -29,12 +29,6 @@ pub struct SaplingSignedClaim {
     pub value: Option<u64>,
     /// Airdrop nullifier used for double-claim prevention.
     pub airdrop_nullifier: Nullifier,
-    /// Hash of this claim's unsigned proof fields.
-    #[serde_as(as = "Hex")]
-    pub proof_hash: [u8; 32],
-    /// Hash of this claim's external message payload.
-    #[serde_as(as = "Hex")]
-    pub message_hash: [u8; 32],
     /// Spend authorization signature over the submission digest.
     #[serde_as(as = "Hex")]
     pub spend_auth_sig: [u8; 64],
@@ -63,12 +57,6 @@ pub struct OrchardSignedClaim {
     pub value: Option<u64>,
     /// Airdrop nullifier used for double-claim prevention.
     pub airdrop_nullifier: Nullifier,
-    /// Hash of this claim's unsigned proof fields.
-    #[serde_as(as = "Hex")]
-    pub proof_hash: [u8; 32],
-    /// Hash of this claim's external message payload.
-    #[serde_as(as = "Hex")]
-    pub message_hash: [u8; 32],
     /// Spend authorization signature over the submission digest.
     #[serde_as(as = "Hex")]
     pub spend_auth_sig: [u8; 64],
