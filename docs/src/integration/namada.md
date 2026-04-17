@@ -1,6 +1,27 @@
 # Integration: Namada
 
-This page describes an example integration of ZAIR in Namada. You can find the latest source code hosted at [GitHub](https://github.com/eigerco/namada) (_latest commit at the time of writing: [`53f8a9c`](https://github.com/eigerco/namada/commit/53f8a9c7059a873db7dacc18d8b4916e61272c5e)_).
+This page describes an example integration of ZAIR in Namada. You can find the latest source code hosted at [GitHub](https://github.com/eigerco/namada) (_latest commit at the time of writing: [`e0468b1`](https://github.com/eigerco/namada/commit/e0468b1308a5a397e219e754fc39eb31c4013f8d)_).
+
+## Table of Contents
+
+- [Getting Started](#getting-started)
+- [Implementation](#implementation)
+  - [Transactions](#transactions)
+  - [Validity Predicate](#validity-predicate)
+  - [Storage](#storage)
+- [Verification](#verification)
+  - [Airdrop Nullifiers](#airdrop-nullifiers)
+  - [Message](#message)
+  - [Signature Verification](#signature-verification)
+  - [Proof Verification](#proof-verification)
+- [Plain Implementation](#plain-implementation)
+  - [Message](#plain-message)
+  - [Value Commitment](#plain-value-commitment)
+- [SHA256 Implementation](#sha256-implementation)
+  - [Message](#sha256-message)
+  - [Value Commitment](#sha256-value-commitment)
+- [Summary](#summary)
+- [References](#references)
 
 ## Getting Started
 
@@ -191,20 +212,12 @@ See [Airdrop Nullifiers](../concepts/airdrop-nullifier.md) for more details.
 
 ### Message
 
-ZAIR supports a standard signature scheme over implementation-specific binary-encoded messages. For Namada we demonstrate an example of this by defining a custom `Message` used to verify claim submissions:
+ZAIR supports a standard signature scheme over implementation-specific binary-encoded messages. The message format differs between the Plain and SHA256 implementations - see the respective sections below.
 
-```rust
-pub struct Message {
-    /// The target of the airdrop.
-    pub target: Address,
-    /// Amount to claim.
-    pub amount: u64,
-    /// Commitment value randomness.
-    pub rcv: [u8; 32],
-}
-```
 
 A claimant provides their binary-encoded message along with their proofs to ZAIR and signs the message to generate a standard signature cryptographically linking the message to the hash of the proof. The signature proves the claimant controls the private spending key associated with the proof.
+
+### Signature Verification
 
 To verify the validity of the signature we first compute the message hash and the proof hash. Then, using ZAIR's public API we compute a signature digest and verify it:
 
@@ -242,9 +255,71 @@ fn verify_signature(
 The signature uses both a target id and a separate pool identifier.
 ```
 
-### Value Commitment
+### Proof Verification
 
-For the value commitment scheme we choose `SHA256`. Extracting `amount` and `rcv` from the Namada message we compute the value commitment and assert that it's equal to the signed one:
+Finally, the zero-knowledge proof is verified using ZAIR's public standard verifier API. If any check fails, the validity predicate rejects the transaction.
+
+For more details on zero-knowledge proof verification, see the corresponding proof sections for:
+
+- [Sapling](../airdrop-proofs/sapling.md)
+- [Orchard](../airdrop-proofs/orchard.md)
+
+## Plain Implementation
+
+This section describes the Plain value commitment implementation. The message structure is simpler as it does not require value commitment randomness.
+
+### Plain Message
+
+```rust
+pub struct Message {
+    /// The target of the airdrop.
+    pub target: Address,
+    /// Amount to claim.
+    pub amount: u64,
+}
+```
+
+### Plain Value Commitment
+
+For the plain value commitment scheme we simply compare the proof value directly against the message amount:
+
+```rust
+/// Checks that the plain value commitment is valid by comparing the proof
+/// value directly with the message amount.
+fn check_plain_value_commitment(
+    value: u64,
+    Message { amount, .. }: &Message,
+) -> Result<()> {
+    if value != *amount {
+        return Err(VpError::ValueCommitmentMismatch.into());
+    }
+
+    Ok(())
+}
+```
+
+See [Value Commitments](../concepts/value-commitments.md) for more details.
+
+## SHA256 Implementation
+
+This section describes the SHA256 value commitment implementation. The message includes value commitment randomness (`rcv`) which is used in the commitment computation.
+
+### SHA256 Message
+
+```rust
+pub struct Message {
+    /// The target of the airdrop.
+    pub target: Address,
+    /// Amount to claim.
+    pub amount: u64,
+    /// Commitment value randomness.
+    pub rcv: [u8; 32],
+}
+```
+
+### SHA256 Value Commitment
+
+For the SHA256 value commitment scheme we extract `amount` and `rcv` from the Namada message and compute the value commitment, asserting that it's equal to the signed one:
 
 ```rust
 /// Checks that the SHA256 value commitment is valid.
@@ -265,15 +340,6 @@ fn check_sha256_value_commitment(
 
 See [Value Commitments](../concepts/value-commitments.md) for more details.
 
-### Proof Verification
-
-Finally, the zero-knowledge proof is verified using ZAIR's public standard verifier API. If any check fails, the validity predicate rejects the transaction.
-
-For more details on zero-knowledge proof verification, see the corresponding proof sections for:
-
-- [Sapling](../airdrop-proofs/sapling.md)
-- [Orchard](../airdrop-proofs/orchard.md)
-
 ## Summary
 
 On success, the claimed tokens are credited to the target address and the airdrop nullifier is recorded to prevent double-claiming. On failure, the transaction is rejected and no state changes occur.
@@ -283,5 +349,10 @@ The verification flow runs in this order:
 1. Airdrop Nullifiers
 2. Message Targets
 3. Message Signature
-4. Value Commitment
+4. Value Commitment (Plain or SHA256)
 5. ZK Proof
+
+## References
+
+- [Plain Implementation](https://github.com/eigerco/namada/tree/main)
+- [SHA256 Implementation](https://github.com/eigerco/namada/tree/sha256-value-commitment)
