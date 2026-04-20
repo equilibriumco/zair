@@ -129,6 +129,7 @@ pub struct Config {
     q_lt: Selector,
     q_order: Selector,
     q_u32_add_iv: Selector,
+    q_value_bytes: Selector,
 }
 
 impl Config {
@@ -236,6 +237,7 @@ pub struct Circuit {
     pub gap_path: Value<[pallas::Base; MERKLE_DEPTH_ORCHARD]>,
     /// Gap leaf position within the gap tree.
     pub gap_pos: Value<u32>,
+
 }
 
 /// Public inputs to the Orchard airdrop circuit.
@@ -595,6 +597,58 @@ impl plonk::Circuit<pallas::Base> for Circuit {
             Constraints::with_selector(q, [("carry_bool", carry_bool), ("eq", eq)])
         });
 
+        // Decompose `v` (u64) into 8 LE bytes and compose SHA-256 input halves
+        // W_1 / W_2 (BE u32 from 4 LE bytes). Bytes are range-checked via the
+        // Sinsemilla lookup.
+        let q_value_bytes = meta.selector();
+        meta.create_gate("value bytes and SHA-256 input halves", |meta| {
+            let q = meta.query_selector(q_value_bytes);
+            let v = meta.query_advice(advices[0], Rotation::cur());
+            let b0 = meta.query_advice(advices[1], Rotation::cur());
+            let b1 = meta.query_advice(advices[2], Rotation::cur());
+            let b2 = meta.query_advice(advices[3], Rotation::cur());
+            let b3 = meta.query_advice(advices[4], Rotation::cur());
+            let b4 = meta.query_advice(advices[5], Rotation::cur());
+            let b5 = meta.query_advice(advices[6], Rotation::cur());
+            let b6 = meta.query_advice(advices[7], Rotation::cur());
+            let b7 = meta.query_advice(advices[8], Rotation::cur());
+
+            let w1_hi = meta.query_advice(advices[0], Rotation::next());
+            let w1_lo = meta.query_advice(advices[1], Rotation::next());
+            let w2_hi = meta.query_advice(advices[2], Rotation::next());
+            let w2_lo = meta.query_advice(advices[3], Rotation::next());
+
+            let c = |s: u64| Expression::Constant(pallas::Base::from(1u64 << s));
+
+            let reconstruct_v = v
+                - (b0.clone()
+                    + b1.clone() * c(8)
+                    + b2.clone() * c(16)
+                    + b3.clone() * c(24)
+                    + b4.clone() * c(32)
+                    + b5.clone() * c(40)
+                    + b6.clone() * c(48)
+                    + b7.clone() * c(56));
+
+            // W_i is formed big-endian from 4 consecutive little-endian bytes.
+            // So W_1_hi = b0·2^8 + b1, W_1_lo = b2·2^8 + b3, etc.
+            let w1_hi_eq = w1_hi - (b0 * c(8) + b1);
+            let w1_lo_eq = w1_lo - (b2 * c(8) + b3);
+            let w2_hi_eq = w2_hi - (b4 * c(8) + b5);
+            let w2_lo_eq = w2_lo - (b6 * c(8) + b7);
+
+            Constraints::with_selector(
+                q,
+                [
+                    ("reconstruct_v", reconstruct_v),
+                    ("W1_hi", w1_hi_eq),
+                    ("W1_lo", w1_lo_eq),
+                    ("W2_hi", w2_hi_eq),
+                    ("W2_lo", w2_lo_eq),
+                ],
+            )
+        });
+
         Config {
             primary,
             advices,
@@ -612,6 +666,7 @@ impl plonk::Circuit<pallas::Base> for Circuit {
             q_lt,
             q_order,
             q_u32_add_iv,
+            q_value_bytes,
         }
     }
 
@@ -761,12 +816,23 @@ impl plonk::Circuit<pallas::Base> for Circuit {
             let magnitude = assign_free_advice(
                 layouter.namespace(|| "cv magnitude"),
                 config.advices[9],
-                v.value().map(|v| pallas::Base::from(v.inner())),
+                v.value().map(|nv| pallas::Base::from(nv.inner())),
             )?;
+            // Bind magnitude to `v` so cv commits to the same value as note_commit.
+            layouter.assign_region(
+                || "bind magnitude to v",
+                |mut region| region.constrain_equal(v.cell(), magnitude.cell()),
+            )?;
+
+            // ScalarFixedShort only enforces sign² = 1; pin to +1.
             let sign = assign_free_advice(
                 layouter.namespace(|| "cv sign"),
                 config.advices[9],
                 Value::known(pallas::Base::one()),
+            )?;
+            layouter.assign_region(
+                || "pin cv sign to +1",
+                |mut region| region.constrain_constant(sign.cell(), pallas::Base::one()),
             )?;
 
             let v_mag_sign = (magnitude, sign);
@@ -795,13 +861,128 @@ impl plonk::Circuit<pallas::Base> for Circuit {
             sha256::Table16Chip::load(config.sha256_config.clone(), &mut layouter)?;
             let sha256_chip = config.sha256_chip();
 
-            // Construct the single padded message block:
-            // PREFIX || LE64(value) || rcv_sha256 || pad || len.
+            // Decompose `v` into 8 LE bytes and compute the 16-bit halves of
+            // SHA-256 words W_1 and W_2, to bind them to the gadget's cells.
+            let value_le_bytes: Value<[pallas::Base; 8]> = v.value().map(|nv| {
+                let bs = nv.inner().to_le_bytes();
+                std::array::from_fn(|i| pallas::Base::from(bs[i] as u64))
+            });
+            let half = |lo: usize, hi: usize| {
+                value_le_bytes
+                    .map(|bs| bs[lo] * pallas::Base::from(1u64 << 8) + bs[hi])
+            };
+            // W_i is BE-u32 from 4 LE bytes. The 16-bit halves are therefore:
+            //   W_1_hi = b0·256 + b1, W_1_lo = b2·256 + b3,
+            //   W_2_hi = b4·256 + b5, W_2_lo = b6·256 + b7.
+            let w1_hi_v = half(0, 1);
+            let w1_lo_v = half(2, 3);
+            let w2_hi_v = half(4, 5);
+            let w2_lo_v = half(6, 7);
+
+            let (b_cells, w1_hi_c, w1_lo_c, w2_hi_c, w2_lo_c) = layouter.assign_region(
+                || "decompose v into bytes and W_1/W_2 halves",
+                |mut region| {
+                    config.q_value_bytes.enable(&mut region, 0)?;
+                    // Copy `v` into advices[0] at row 0 with an equality
+                    // constraint to the canonical note-value cell.
+                    v.copy_advice(|| "v", &mut region, config.advices[0], 0)?;
+
+                    let mut b_cells: Vec<
+                        halo2_proofs::circuit::AssignedCell<pallas::Base, pallas::Base>,
+                    > = Vec::with_capacity(8);
+                    for i in 0..8 {
+                        let b_i = region.assign_advice(
+                            || format!("b{}", i),
+                            config.advices[1 + i],
+                            0,
+                            || value_le_bytes.map(|bs| bs[i]),
+                        )?;
+                        b_cells.push(b_i);
+                    }
+                    let w1_hi_c = region.assign_advice(
+                        || "W_1_hi",
+                        config.advices[0],
+                        1,
+                        || w1_hi_v,
+                    )?;
+                    let w1_lo_c = region.assign_advice(
+                        || "W_1_lo",
+                        config.advices[1],
+                        1,
+                        || w1_lo_v,
+                    )?;
+                    let w2_hi_c = region.assign_advice(
+                        || "W_2_hi",
+                        config.advices[2],
+                        1,
+                        || w2_hi_v,
+                    )?;
+                    let w2_lo_c = region.assign_advice(
+                        || "W_2_lo",
+                        config.advices[3],
+                        1,
+                        || w2_lo_v,
+                    )?;
+                    Ok((b_cells, w1_hi_c, w1_lo_c, w2_hi_c, w2_lo_c))
+                },
+            )?;
+
+            // 8-bit range check per byte via the Sinsemilla lookup (K = 10).
+            let lookup = config.sinsemilla_chip_1().config().lookup_config();
+            for b_cell in &b_cells {
+                lookup.copy_short_check(
+                    layouter.namespace(|| "byte range (8 bits)"),
+                    b_cell.clone(),
+                    8,
+                )?;
+            }
+
             let block = value_commitment_sha256_block(self.value, self.rcv_sha256);
 
             let init = sha256_chip.initialization_vector(&mut layouter)?;
-            let state = sha256_chip.compress(&mut layouter, &init, block)?;
+            let (state, input_halves) =
+                sha256_chip.compress_with_input_halves(&mut layouter, &init, block)?;
             let deltas = sha256_chip.digest_cells(&mut layouter, &state)?;
+
+            // Bind W_1 / W_2 of the SHA input block back to the byte
+            // decomposition of `v`. The halves are returned as `(lo, hi)`.
+            layouter.assign_region(
+                || "bind v to sha256 W_1/W_2",
+                |mut region| {
+                    let (w1_lo_g, w1_hi_g) = &input_halves[1];
+                    let (w2_lo_g, w2_hi_g) = &input_halves[2];
+                    region.constrain_equal(w1_hi_g.cell(), w1_hi_c.cell())?;
+                    region.constrain_equal(w1_lo_g.cell(), w1_lo_c.cell())?;
+                    region.constrain_equal(w2_hi_g.cell(), w2_hi_c.cell())?;
+                    region.constrain_equal(w2_lo_g.cell(), w2_lo_c.cell())?;
+                    Ok(())
+                },
+            )?;
+
+            // Pin the remaining preimage words to their documented constants
+            // (domain-separation prefix + Merkle-Damgård padding/length).
+            // W_3..W_10 hold the prover-secret `rcv_sha256` and are left free.
+            layouter.assign_region(
+                || "pin sha256 constant preimage words",
+                |mut region| {
+                    let f = pallas::Base::from;
+                    // W_0 = BE("Zair") = 0x5A61_6972
+                    region.constrain_constant(input_halves[0].1.cell(), f(0x5A61))?;
+                    region.constrain_constant(input_halves[0].0.cell(), f(0x6972))?;
+                    // W_11 = 0x8000_0000 (0x80 padding byte at block[44])
+                    region.constrain_constant(input_halves[11].1.cell(), f(0x8000))?;
+                    region.constrain_constant(input_halves[11].0.cell(), f(0))?;
+                    // W_12 = W_13 = W_14 = 0 (zero padding + length high word)
+                    for i in [12_usize, 13, 14] {
+                        region.constrain_constant(input_halves[i].1.cell(), f(0))?;
+                        region.constrain_constant(input_halves[i].0.cell(), f(0))?;
+                    }
+                    // W_15 = 352 = 44 * 8, the preimage bit length
+                    region.constrain_constant(input_halves[15].1.cell(), f(0))?;
+                    region.constrain_constant(input_halves[15].0.cell(), f(0x0160))?;
+                    Ok(())
+                },
+            )?;
 
             let digest_start = match scheme {
                 ValueCommitmentScheme::Sha256 => DIGEST_0_SHA,
@@ -1207,3 +1388,4 @@ fn assert_order_255(
         },
     )
 }
+
