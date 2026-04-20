@@ -1189,7 +1189,7 @@ dependencies = [
 [[package]]
 name = "halo2_gadgets"
 version = "0.3.1"
-source = "git+https://github.com/eigerco/halo2#29a61614e7d96a91940c7690e8021673baf25b30"
+source = "git+https://github.com/equilibriumco/halo2?rev=c06ab687432362b1368b12cfcbaf14e29b13cec3#c06ab687432362b1368b12cfcbaf14e29b13cec3"
 dependencies = [
  "arrayvec",
  "bitvec",
