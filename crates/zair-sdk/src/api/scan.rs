@@ -5,6 +5,7 @@ use std::str::FromStr as _;
 use http::Uri;
 use thiserror::Error;
 use tracing::{info, instrument, warn};
+use zair_core::base::SanitiseNullifiers;
 use zair_core::schema::config::AirdropConfiguration;
 use zair_core::schema::proof_inputs::AirdropClaimInputs;
 use zair_scan::ViewingKeys;
@@ -59,7 +60,7 @@ pub(crate) async fn process_pool_claims<P: PoolProcessor>(
     visitor: &AccountNotesVisitor,
     viewing_keys: &ViewingKeys,
     airdrop_config: &AirdropConfiguration,
-    snapshot_nullifiers: Option<zair_core::base::SanitiseNullifiers>,
+    snapshot_nullifiers: Option<SanitiseNullifiers>,
     gap_tree_mode: GapTreeMode,
     gap_tree_bytes: Option<&[u8]>,
 ) -> Result<PoolClaimResult<P::PrivateInputs>, ScanError> {
@@ -85,7 +86,7 @@ pub(crate) async fn process_pool_claims<P: PoolProcessor>(
         }
     };
 
-    let user_nullifiers = zair_core::base::SanitiseNullifiers::new(notes.keys().copied().collect());
+    let user_nullifiers = SanitiseNullifiers::new(notes.keys().copied().collect());
 
     let pool_data = match gap_tree_mode {
         GapTreeMode::Sparse => build_pool_merkle_tree_from_memory(
@@ -229,7 +230,7 @@ pub async fn airdrop_claim_from_config(
         &visitor,
         &viewing_keys,
         config,
-        sapling_nullifiers.map(zair_core::base::SanitiseNullifiers::new),
+        sapling_nullifiers.map(SanitiseNullifiers::new),
         gap_tree_mode,
         sapling_gap_tree_bytes,
     )
@@ -240,7 +241,7 @@ pub async fn airdrop_claim_from_config(
         &visitor,
         &viewing_keys,
         config,
-        orchard_nullifiers.map(zair_core::base::SanitiseNullifiers::new),
+        orchard_nullifiers.map(SanitiseNullifiers::new),
         gap_tree_mode,
         orchard_gap_tree_bytes,
     )

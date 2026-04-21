@@ -68,7 +68,7 @@ impl PoolMerkleTree {
         match self {
             Self::Sapling(tree) => tree.root_bytes(),
             Self::Orchard(tree) => tree.root_bytes(),
-            Self::SaplingSparse(tree) => tree.root().to_bytes(),
+            Self::SaplingSparse(tree) => tree.root_bytes(),
             Self::OrchardSparse(tree) => tree.root_bytes(),
         }
     }
@@ -82,9 +82,7 @@ impl PoolMerkleTree {
         match self {
             Self::Sapling(tree) => tree.witness_bytes(position),
             Self::Orchard(tree) => tree.witness_bytes(position),
-            Self::SaplingSparse(tree) => tree
-                .witness(position.into())
-                .map(|path| path.into_iter().map(|node| node.to_bytes()).collect()),
+            Self::SaplingSparse(tree) => tree.witness_bytes(position.into()),
             Self::OrchardSparse(tree) => tree.witness_bytes(position.into()),
         }
     }
