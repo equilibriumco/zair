@@ -79,6 +79,13 @@ const NOTE_ANCHOR_PLAIN: usize = 3;
 const GAP_ROOT_PLAIN: usize = 4;
 const AIRDROP_NF_PLAIN: usize = 5;
 
+// SHA-256 single-block preimage constants for the 44-byte layout
+// PREFIX || LE64(value) || rcv_sha256 || 0x80 || 0x00... || BE64(352).
+const SHA256_PREIMAGE_DOMAIN_SEPARATION_PREFIX: u32 =
+    u32::from_be_bytes(VALUE_COMMIT_SHA256_PREFIX);
+const SHA256_PREIMAGE_PADDING_WORD: u32 = 0x8000_0000;
+const SHA256_PREIMAGE_BIT_LENGTH: u32 = 352;
+
 /// Value commitment scheme selection for the Orchard airdrop circuit.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum ValueCommitmentScheme {
@@ -948,20 +955,40 @@ impl plonk::Circuit<pallas::Base> for Circuit {
                 || "pin sha256 constant preimage words",
                 |mut region| {
                     let f = pallas::Base::from;
-                    // W_0 = BE("Zair") = 0x5A61_6972
-                    region.constrain_constant(input_halves[0].1.cell(), f(0x5A61))?;
-                    region.constrain_constant(input_halves[0].0.cell(), f(0x6972))?;
-                    // W_11 = 0x8000_0000 (0x80 padding byte at block[44])
-                    region.constrain_constant(input_halves[11].1.cell(), f(0x8000))?;
-                    region.constrain_constant(input_halves[11].0.cell(), f(0))?;
-                    // W_12 = W_13 = W_14 = 0 (zero padding + length high word)
+                    let hi = |w: u32| f(u64::from(w >> 16));
+                    let lo = |w: u32| f(u64::from(w & 0xFFFF));
+                    // W_0 = BE("Zair")
+                    region.constrain_constant(
+                        input_halves[0].1.cell(),
+                        hi(SHA256_PREIMAGE_DOMAIN_SEPARATION_PREFIX),
+                    )?;
+                    region.constrain_constant(
+                        input_halves[0].0.cell(),
+                        lo(SHA256_PREIMAGE_DOMAIN_SEPARATION_PREFIX),
+                    )?;
+                    // W_11 = 0x80 padding byte at block[44]
+                    region.constrain_constant(
+                        input_halves[11].1.cell(),
+                        hi(SHA256_PREIMAGE_PADDING_WORD),
+                    )?;
+                    region.constrain_constant(
+                        input_halves[11].0.cell(),
+                        lo(SHA256_PREIMAGE_PADDING_WORD),
+                    )?;
+                    // W_12 = W_13 = W_14 = 0x0 (zero padding + length high word)
                     for i in [12_usize, 13, 14] {
-                        region.constrain_constant(input_halves[i].1.cell(), f(0))?;
-                        region.constrain_constant(input_halves[i].0.cell(), f(0))?;
+                        region.constrain_constant(input_halves[i].1.cell(), f(0x0))?;
+                        region.constrain_constant(input_halves[i].0.cell(), f(0x0))?;
                     }
-                    // W_15 = 352 = 44 * 8, the preimage bit length
-                    region.constrain_constant(input_halves[15].1.cell(), f(0))?;
-                    region.constrain_constant(input_halves[15].0.cell(), f(0x0160))?;
+                    // W_15 = preimage bit length (44 * 8)
+                    region.constrain_constant(
+                        input_halves[15].1.cell(),
+                        hi(SHA256_PREIMAGE_BIT_LENGTH),
+                    )?;
+                    region.constrain_constant(
+                        input_halves[15].0.cell(),
+                        lo(SHA256_PREIMAGE_BIT_LENGTH),
+                    )?;
                     Ok(())
                 },
             )?;
