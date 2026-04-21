@@ -25,6 +25,7 @@ use crate::api::key::KeyError;
 use crate::api::prove::ProveError;
 use crate::api::scan::ScanError;
 use crate::api::sign::SignError;
+pub use crate::commands::GapTreeMode;
 
 /// Errors that can occur in the API pipeline.
 #[derive(Debug, Error)]
@@ -67,6 +68,9 @@ pub enum ApiError {
 /// * `orchard_params_bytes` - Halo2 params bytes (None if no Orchard claims)
 /// * `birthday_height` - earliest block for note scanning
 /// * `config` - airdrop configuration
+/// * `gap_tree_mode` - gap tree handling mode (None, Rebuild, or Sparse)
+/// * `sapling_gap_tree_bytes` - precomputed Sapling gap tree bytes (for None/Rebuild mode)
+/// * `orchard_gap_tree_bytes` - precomputed Orchard gap tree bytes (for None/Rebuild mode)
 /// * `message_hashes` - pre-computed message hashes to sign; per‑proof hashes (keyed by airdrop
 ///   nullifier) take precedence over the shared fallback
 ///
@@ -85,6 +89,9 @@ pub async fn run(
     orchard_params_bytes: Option<&[u8]>,
     birthday_height: u64,
     config: &AirdropConfiguration,
+    gap_tree_mode: GapTreeMode,
+    sapling_gap_tree_bytes: Option<&[u8]>,
+    orchard_gap_tree_bytes: Option<&[u8]>,
     message_hashes: Option<ResolvedMessageHashes>,
 ) -> Result<ClaimSubmission, ApiError> {
     let ufvk = key::derive_ufvk_from_seed(to_zcash_network(config.network), account_id, seed)
@@ -97,6 +104,9 @@ pub async fn run(
         &ufvk,
         birthday_height,
         config,
+        gap_tree_mode,
+        sapling_gap_tree_bytes,
+        orchard_gap_tree_bytes,
     )
     .await
     .map_err(ApiError::Scan)?;
