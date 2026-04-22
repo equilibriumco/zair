@@ -7,7 +7,8 @@ use tracing::{debug, info};
 use zair_core::base::{Nullifier, Pool, SanitiseNullifiers};
 use zair_core::schema::proof_inputs::{ClaimInput, PublicInputs};
 use zair_nonmembership::{
-    MerklePathError, NonMembershipTree, OrchardNonMembershipTree, TreePosition,
+    MerklePathError, NonMembershipTree, OrchardGapTree, OrchardNonMembershipTree, SaplingGapTree,
+    TreePosition, map_orchard_user_positions, map_sapling_user_positions,
 };
 use zair_scan::ViewingKeys;
 
@@ -50,6 +51,10 @@ pub struct LoadedPoolData {
 
 /// Pool-specific non-membership tree variants.
 pub enum PoolMerkleTree {
+    /// Sapling pool gap tree (dense representation from precomputed file).
+    Sapling(SaplingGapTree),
+    /// Orchard pool gap tree (dense representation from precomputed file).
+    Orchard(OrchardGapTree),
     /// Sapling pool non-membership tree using sparse representation.
     SaplingSparse(NonMembershipTree),
     /// Orchard pool non-membership tree using sparse representation.
@@ -61,7 +66,9 @@ impl PoolMerkleTree {
     #[must_use]
     pub fn root_bytes(&self) -> [u8; 32] {
         match self {
-            Self::SaplingSparse(tree) => tree.root().to_bytes(),
+            Self::Sapling(tree) => tree.root_bytes(),
+            Self::Orchard(tree) => tree.root_bytes(),
+            Self::SaplingSparse(tree) => tree.root_bytes(),
             Self::OrchardSparse(tree) => tree.root_bytes(),
         }
     }
@@ -73,9 +80,9 @@ impl PoolMerkleTree {
     /// Returns an error if the witness cannot be generated for the given position.
     pub fn witness_bytes(&self, position: u64) -> Result<Vec<[u8; 32]>, MerklePathError> {
         match self {
-            Self::SaplingSparse(tree) => tree
-                .witness(position.into())
-                .map(|path| path.into_iter().map(|node| node.to_bytes()).collect()),
+            Self::Sapling(tree) => tree.witness_bytes(position),
+            Self::Orchard(tree) => tree.witness_bytes(position),
+            Self::SaplingSparse(tree) => tree.witness_bytes(position.into()),
             Self::OrchardSparse(tree) => tree.witness_bytes(position.into()),
         }
     }
@@ -140,6 +147,103 @@ pub async fn build_pool_merkle_tree_from_memory(
         tree,
         user_nullifiers: user_positions,
     })
+}
+
+/// Build the non-membership merkle tree for a pool from precomputed gap-tree bytes.
+///
+/// Corresponds to `GapTreeMode::None` - requires precomputed gap-tree file bytes.
+///
+/// # Errors
+///
+/// Returns an error if gap-tree bytes are invalid or user nullifier mapping fails.
+pub async fn build_pool_merkle_tree_from_file(
+    chain_nullifiers: SanitiseNullifiers,
+    user_nullifiers: SanitiseNullifiers,
+    gap_tree_bytes: &[u8],
+    pool: Pool,
+) -> Result<LoadedPoolData, ClaimsError> {
+    let use_orchard_tree = pool == Pool::Orchard;
+
+    info!(
+        count = chain_nullifiers.len(),
+        %pool,
+        "Loaded chain nullifiers"
+    );
+
+    info!(%pool, "Loading gap tree from precomputed bytes...");
+    let user_positions = if use_orchard_tree {
+        map_orchard_user_positions(&chain_nullifiers, &user_nullifiers)
+            .map_err(|e| ClaimsError::MerkleTreeBuild(pool.to_string(), e.to_string()))?
+    } else {
+        map_sapling_user_positions(&chain_nullifiers, &user_nullifiers)
+            .map_err(|e| ClaimsError::MerkleTreeBuild(pool.to_string(), e.to_string()))?
+    };
+
+    let tree = if use_orchard_tree {
+        PoolMerkleTree::Orchard(
+            OrchardGapTree::from_bytes(gap_tree_bytes)
+                .map_err(|e| ClaimsError::MerkleTreeBuild(pool.to_string(), e.to_string()))?,
+        )
+    } else {
+        PoolMerkleTree::Sapling(
+            SaplingGapTree::from_bytes(gap_tree_bytes)
+                .map_err(|e| ClaimsError::MerkleTreeBuild(pool.to_string(), e.to_string()))?,
+        )
+    };
+
+    info!(%pool, "Gap tree loaded");
+    Ok(LoadedPoolData {
+        tree,
+        user_nullifiers: user_positions,
+    })
+}
+
+/// Build gap tree from nullifier bytes and return serialized bytes (for persistence).
+///
+/// Corresponds to `GapTreeMode::Rebuild` - builds gap tree and returns serialized bytes
+/// that can be persisted to a file.
+///
+/// # Errors
+///
+/// Returns an error if tree construction fails.
+pub async fn build_gap_tree_and_serialize(
+    snapshot_nullifiers_bytes: &[u8],
+    pool: Pool,
+) -> Result<Vec<u8>, ClaimsError> {
+    let use_orchard_tree = pool == Pool::Orchard;
+    let chain_nullifiers_vec = zair_scan::read_nullifiers(snapshot_nullifiers_bytes)
+        .await
+        .map_err(|e| ClaimsError::MerkleTreeBuild(pool.to_string(), e.to_string()))?;
+    let chain_nullifiers = SanitiseNullifiers::new(chain_nullifiers_vec);
+
+    info!(
+        count = chain_nullifiers.len(),
+        %pool,
+        "Building gap tree from snapshot nullifiers..."
+    );
+
+    let serialized = tokio::task::spawn_blocking(move || {
+        if use_orchard_tree {
+            let tree = OrchardGapTree::from_nullifiers_with_progress(
+                &chain_nullifiers,
+                |_current, _total| {},
+            )
+            .map_err(|e| ClaimsError::MerkleTreeBuild(pool.to_string(), e.to_string()))?;
+            Ok::<_, ClaimsError>(tree.to_bytes())
+        } else {
+            let tree = SaplingGapTree::from_nullifiers_with_progress(
+                &chain_nullifiers,
+                |_current, _total| {},
+            )
+            .map_err(|e| ClaimsError::MerkleTreeBuild(pool.to_string(), e.to_string()))?;
+            Ok(tree.to_bytes())
+        }
+    })
+    .await
+    .map_err(|e| ClaimsError::MerkleTreeBuild(pool.to_string(), e.to_string()))??;
+
+    info!(%pool, "Gap tree built and serialized");
+    Ok(serialized)
 }
 
 /// Generate airdrop claims for the user's notes.

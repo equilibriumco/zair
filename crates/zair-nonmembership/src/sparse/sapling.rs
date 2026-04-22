@@ -263,11 +263,15 @@ impl NonMembershipTree {
     }
 
     /// Returns the root of the tree.
-    ///
-    /// Returns `None` if the tree is empty.
     #[must_use]
     pub const fn root(&self) -> NonMembershipNode {
         self.cached_root
+    }
+
+    /// Returns the root of the tree as bytes.
+    #[must_use]
+    pub const fn root_bytes(&self) -> [u8; 32] {
+        self.root().to_bytes()
     }
 
     /// Returns the number of leaves in the tree.
@@ -296,6 +300,21 @@ impl NonMembershipTree {
         self.inner
             .witness(position, 0)
             .map_err(|e| MerklePathError::WitnessError(format!("{e:?}")))
+    }
+
+    /// Generate a witness (authentication path) for a marked leaf.
+    ///
+    /// # Arguments
+    /// * `position` - The position of the leaf (must have been marked during construction).
+    ///
+    /// # Returns
+    /// A vector of sibling hashes represented as bytes from leaf to root.
+    ///
+    /// # Errors
+    /// Returns an error if the position is not marked or witness generation fails.
+    pub fn witness_bytes(&self, position: Position) -> Result<Vec<[u8; 32]>, MerklePathError> {
+        self.witness(position)
+            .map(|path| path.into_iter().map(|node| node.to_bytes()).collect())
     }
 
     /// Verify that a leaf at the given position produces the expected root.

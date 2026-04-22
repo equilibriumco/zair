@@ -16,7 +16,7 @@ use zcash_keys::keys::UnifiedFullViewingKey;
 
 use crate::api::claims::{
     GapTreeMode, OrchardPool, PoolClaimResult, PoolProcessor, SaplingPool,
-    build_pool_merkle_tree_from_memory, generate_claims,
+    build_pool_merkle_tree_from_file, build_pool_merkle_tree_from_memory, generate_claims,
 };
 use crate::common::{resolve_lightwalletd_url, to_zcash_network};
 
@@ -55,13 +55,14 @@ pub enum ScanError {
 }
 
 #[instrument(level = "debug", skip_all, fields(pool = %P::POOL))]
-pub(crate) async fn process_pool_claims_from_memory<P: PoolProcessor>(
+pub(crate) async fn process_pool_claims<P: PoolProcessor>(
     pool_enabled_in_config: bool,
     visitor: &AccountNotesVisitor,
     viewing_keys: &ViewingKeys,
     airdrop_config: &AirdropConfiguration,
     snapshot_nullifiers: Option<SanitiseNullifiers>,
     gap_tree_mode: GapTreeMode,
+    gap_tree_bytes: Option<&[u8]>,
 ) -> Result<PoolClaimResult<P::PrivateInputs>, ScanError> {
     if !pool_enabled_in_config {
         return Ok(PoolClaimResult::empty());
@@ -86,14 +87,33 @@ pub(crate) async fn process_pool_claims_from_memory<P: PoolProcessor>(
     };
 
     let user_nullifiers = SanitiseNullifiers::new(notes.keys().copied().collect());
-    let pool_data = build_pool_merkle_tree_from_memory(
-        snapshot_nullifiers,
-        user_nullifiers,
-        P::POOL,
-        gap_tree_mode,
-    )
-    .await
-    .map_err(|e| ScanError::ClaimGeneration(P::POOL.to_string(), e.to_string()))?;
+
+    let pool_data = match gap_tree_mode {
+        GapTreeMode::Sparse => build_pool_merkle_tree_from_memory(
+            snapshot_nullifiers,
+            user_nullifiers,
+            P::POOL,
+            gap_tree_mode,
+        )
+        .await
+        .map_err(|e| ScanError::ClaimGeneration(P::POOL.to_string(), e.to_string()))?,
+        GapTreeMode::None | GapTreeMode::Rebuild => {
+            let Some(gap_tree_bytes) = gap_tree_bytes else {
+                return Err(ScanError::ClaimGeneration(
+                    P::POOL.to_string(),
+                    format!("GapTreeMode::{gap_tree_mode:?} requires gap_tree_bytes"),
+                ));
+            };
+            build_pool_merkle_tree_from_file(
+                snapshot_nullifiers,
+                user_nullifiers,
+                gap_tree_bytes,
+                P::POOL,
+            )
+            .await
+            .map_err(|e| ScanError::ClaimGeneration(P::POOL.to_string(), e.to_string()))?
+        }
+    };
 
     let anchor = pool_data.tree.root_bytes();
     let Some(expected_root) = P::expected_root(airdrop_config) else {
@@ -128,6 +148,9 @@ pub(crate) async fn process_pool_claims_from_memory<P: PoolProcessor>(
 /// * `ufvk_encoded` - encoded Unified Full Viewing Key string
 /// * `birthday_height` - earliest block for note scanning
 /// * `config` - airdrop configuration
+/// * `gap_tree_mode` - gap tree handling mode (None, Rebuild, or Sparse)
+/// * `sapling_gap_tree_bytes` - precomputed Sapling gap tree bytes (for None/Rebuild mode)
+/// * `orchard_gap_tree_bytes` - precomputed Orchard gap tree bytes (for None/Rebuild mode)
 ///
 /// # Returns
 ///
@@ -144,6 +167,9 @@ pub async fn airdrop_claim_from_config(
     ufvk_encoded: &str,
     birthday_height: u64,
     config: &AirdropConfiguration,
+    gap_tree_mode: GapTreeMode,
+    sapling_gap_tree_bytes: Option<&[u8]>,
+    orchard_gap_tree_bytes: Option<&[u8]>,
 ) -> Result<AirdropClaimInputs, ScanError> {
     let network = to_zcash_network(config.network);
     let lightwalletd_url = resolve_lightwalletd_url(network, lightwalletd_url.as_deref());
@@ -199,23 +225,25 @@ pub async fn airdrop_claim_from_config(
         None
     };
 
-    let sapling_result = process_pool_claims_from_memory::<SaplingPool>(
+    let sapling_result = process_pool_claims::<SaplingPool>(
         config.sapling.is_some(),
         &visitor,
         &viewing_keys,
         config,
         sapling_nullifiers.map(SanitiseNullifiers::new),
-        GapTreeMode::Sparse,
+        gap_tree_mode,
+        sapling_gap_tree_bytes,
     )
     .await?;
 
-    let orchard_result = process_pool_claims_from_memory::<OrchardPool>(
+    let orchard_result = process_pool_claims::<OrchardPool>(
         config.orchard.is_some(),
         &visitor,
         &viewing_keys,
         config,
         orchard_nullifiers.map(SanitiseNullifiers::new),
-        GapTreeMode::Sparse,
+        gap_tree_mode,
+        orchard_gap_tree_bytes,
     )
     .await?;
 
