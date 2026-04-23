@@ -9,7 +9,7 @@ Implementation:
 
 Patched dependency:
 
-- `sapling-crypto/` from [https://github.com/eigerco/sapling-crypto](/url)
+- `sapling-crypto/` from [https://github.com/equilibriumco/sapling-crypto](/url)
 
 ## Proof statement
 

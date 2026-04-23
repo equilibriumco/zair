@@ -6,7 +6,7 @@
 
 Zair offers privacy-preserving tools for Zcash airdrops by allowing users to prove they own eligible notes on Zcash while preserving the privacy of the notes owned and the amounts claimed.
 
-**[Link to Documentation](https://eigerco.github.io/zair)**
+**[Link to Documentation](https://equilibriumco.github.io/zair)**
 
 **This project has not been audited.**
 
@@ -14,7 +14,7 @@ Zair offers privacy-preserving tools for Zcash airdrops by allowing users to pro
 
 An organizer publishes a snapshot of the Zcash chain at a given height. Claimants scan for their eligible notes, then generate a ZK proof per note that demonstrates note ownership and unspentness without revealing the Zcash nullifier. Each proof instead exposes a domain-separated _airdrop nullifier_ for double-claim prevention and is signed with a spend-authorizing key bound to a target-chain message. Verifiers then check the proofs against the snapshot and de-duplicate by airdrop nullifier.
 
-See the [Introduction](https://eigerco.github.io/zair/introduction.html) for more details.
+See the [Introduction](https://equilibriumco.github.io/zair/introduction.html) for more details.
 
 ## Crates
 
@@ -32,7 +32,7 @@ See the [Introduction](https://eigerco.github.io/zair/introduction.html) for mor
 
 ## Getting started
 
-See [Getting Started](https://eigerco.github.io/zair/getting-started/index.html) for build instructions and setup. The quickest path is using Nix:
+See [Getting Started](https://equilibriumco.github.io/zair/getting-started/index.html) for build instructions and setup. The quickest path is using Nix:
 
 ```bash
 nix develop
@@ -41,7 +41,7 @@ cargo build --release
 
 ## Usage
 
-Below is a minimal example workflow. See the [CLI Reference](https://eigerco.github.io/zair/cli/index.html) for details or check `zair --help` for command options.
+Below is a minimal example workflow. See the [CLI Reference](https://equilibriumco.github.io/zair/cli/index.html) for details or check `zair --help` for command options.
 
 ### 1. Derive keys
 
