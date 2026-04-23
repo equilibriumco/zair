@@ -1,6 +1,6 @@
 # Integration: Namada
 
-This page describes an example integration of ZAIR in Namada. You can find the latest source code hosted at [GitHub](https://github.com/eigerco/namada) (_latest commit at the time of writing: [`e0468b1`](https://github.com/eigerco/namada/commit/e0468b1308a5a397e219e754fc39eb31c4013f8d)_).
+This page describes an example integration of ZAIR in Namada. You can find the latest source code hosted at [GitHub](https://github.com/eigerco/namada) (_latest commit at the time of writing: [`463f11c5f`](https://github.com/eigerco/namada/commit/463f11c5f6f2924153f9c751b06b0b60ec0e421d)_).
 
 ## Table of Contents
 
@@ -46,14 +46,16 @@ mv config.json *.params *.bin airdrop/
 
 The `airdrop` directory should contain the following files:
 
-| File                        | Description                  |
-| --------------------------- | ---------------------------- |
-| `config.json`               | Airdrop configuration        |
-| `setup-sapling-pk.params`   | Sapling proving key          |
-| `setup-sapling-vk.params`   | Sapling verifying key        |
-| `setup-orchard-params.bin`  | Orchard proving parameters   |
-| `snapshot-sapling.bin`      | Sapling snapshot nullifiers  |
-| `snapshot-orchard.bin`      | Orchard snapshot nullifiers  |
+| File                       | Description                 |
+| -------------------------- | --------------------------- |
+| `config.json`              | Airdrop configuration       |
+| `setup-sapling-pk.params`  | Sapling proving key         |
+| `setup-sapling-vk.params`  | Sapling verifying key       |
+| `setup-orchard-params.bin` | Orchard proving parameters  |
+| `snapshot-sapling.bin`     | Sapling snapshot nullifiers |
+| `snapshot-orchard.bin`     | Orchard snapshot nullifiers |
+| `gaptree-sapling.bin`      | Sapling gap tree            |
+| `gaptree-orchard.bin`      | Orchard gap tree            |
 
 See [`zair config`](../cli/config.md) and [`zair setup`](../cli/setup.md) for the full flag references.
 
@@ -110,10 +112,30 @@ With the chain running, submit a claim transaction using the desired account add
 namada client claim-airdrop \
   --base-dir .namada/validator-0 \
   --source <ADDRESS> \
-  --seed-file-path <SEED_FILE> \
+  --seed-file-path <SEED_FILE_PATH> \
+  --account-id <ACCOUNT_ID> \
   --birthday <BIRTHDAY> \
+  --sapling-snapshot <SAPLING_SNAPSHOT> \
+  --orchard-snapshot <ORCHARD_SNAPSHOT> \
+  --sapling-gap-tree <SAPLING_GAPTREE> \
+  --orchard-gap-tree <ORCHARD_GAPTREE> \
   --gas-limit 300000
 ```
+
+#### CLI Parameters
+
+| Parameter            | Required    | Description                                             |
+| -------------------- | ----------- | ------------------------------------------------------- |
+| `--source`           | Yes         | The claiming address                                    |
+| `--seed`             | Yes         | 64-byte seed as hex                                     |
+| `--account-id`       | Yes         | ZIP-32 account index for deriving keys                  |
+| `--birthday`         | Yes         | Shielded transaction scan start height                  |
+| `--sapling-snapshot` | Conditional | Sapling nullifier snapshot (required for Sapling pools) |
+| `--orchard-snapshot` | Conditional | Orchard nullifier snapshot (required for Orchard pools) |
+| `--sapling-gap-tree` | Optional    | Sapling gap tree for faster claiming                    |
+| `--orchard-gap-tree` | Optional    | Orchard gap tree for faster claiming                    |
+| `--lightwalletd-url` | Optional    | lightwalletd gRPC endpoint                              |
+| `--gas-limit`        | Yes         | Gas limit for the transaction                           |
 
 You can verify the claim by querying the account balance before and after:
 
@@ -213,7 +235,6 @@ See [Airdrop Nullifiers](../concepts/airdrop-nullifier.md) for more details.
 ### Message
 
 ZAIR supports a standard signature scheme over implementation-specific binary-encoded messages. The message format differs between the Plain and SHA256 implementations - see the respective sections below.
-
 
 A claimant provides their binary-encoded message along with their proofs to ZAIR and signs the message to generate a standard signature cryptographically linking the message to the hash of the proof. The signature proves the claimant controls the private spending key associated with the proof.
 
