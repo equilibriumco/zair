@@ -9,8 +9,8 @@ Implementation:
 
 Patched dependencies:
 
-- `orchard/` from [https://github.com/eigerco/orchard](/url)
-- `halo2-gadgets/` from [https://github.com/eigerco/halo2](/url)
+- `orchard/` from [https://github.com/equilibriumco/orchard](/url)
+- `halo2-gadgets/` from [https://github.com/equilibriumco/halo2](/url)
 
 ## Proof statement
 

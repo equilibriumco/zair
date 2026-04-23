@@ -1,6 +1,6 @@
 # Integration: Namada
 
-This page describes an example integration of ZAIR in Namada. You can find the latest source code hosted at [GitHub](https://github.com/eigerco/namada) (_latest commit at the time of writing: [`463f11c5f`](https://github.com/eigerco/namada/commit/463f11c5f6f2924153f9c751b06b0b60ec0e421d)_).
+This page describes an example integration of ZAIR in Namada. You can find the latest source code hosted at [GitHub](https://github.com/equilibriumco/namada) (_latest commit at the time of writing: [`463f11c5f`](https://github.com/equilibriumco/namada/commit/463f11c5f6f2924153f9c751b06b0b60ec0e421d)_).
 
 ## Table of Contents
 
@@ -375,5 +375,5 @@ The verification flow runs in this order:
 
 ## References
 
-- [Plain Implementation](https://github.com/eigerco/namada/tree/main)
-- [SHA256 Implementation](https://github.com/eigerco/namada/tree/sha256-value-commitment)
+- [Plain Implementation](https://github.com/equilibriumco/namada/tree/main)
+- [SHA256 Implementation](https://github.com/equilibriumco/namada/tree/sha256-value-commitment)

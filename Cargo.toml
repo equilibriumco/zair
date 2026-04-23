@@ -15,7 +15,7 @@ members = [
 [workspace.package]
 edition = "2024"
 rust-version = "1.85.1"
-repository = "https://github.com/eigerco/zcash-namada-airdrop"
+repository = "https://github.com/equilibriumco/zcash-namada-airdrop"
 license = "MIT"
 
 [workspace.dependencies]
