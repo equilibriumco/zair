@@ -14,7 +14,7 @@
         lockFile = ../Cargo.lock;
         # Forked crates.
         outputHashes = {
-          "halo2_gadgets-0.3.1" = "sha256-+1tMFB2w70mJPAiYJboO5rtu0C+rUuPi9qvHf7kk04U=";
+          "halo2_gadgets-0.3.1" = "sha256-bRLQ9krL6pgA1iaVPD7OKoOpIgPmv4O+LQ/1K1/SiJI=";
           "orchard-0.11.0" = "sha256-jVoOLFAQy1BtaOccQbb+dhrlcX0Jyqy65twuo0d0QlM=";
           "sapling-crypto-0.5.0" = "sha256-UwxRBXEhvlcar4g3mKAirke3/oyFBI9+DHPVpLeb2bQ=";
         };
