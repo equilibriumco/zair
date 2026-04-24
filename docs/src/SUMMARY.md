@@ -28,3 +28,4 @@
   - [Namada](./integration/namada.md)
 
 - [References](./appendix/references.md)
+- [Benchmarks](./appendix/benchmarks.md)
