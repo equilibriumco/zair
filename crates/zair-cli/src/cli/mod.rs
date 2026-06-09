@@ -163,8 +163,6 @@ pub fn parse_orchard_params_mode(s: &str) -> Result<OrchardParamsMode> {
 
 #[cfg(test)]
 mod tests {
-    use clap::Parser as _;
-
     use super::*;
 
     #[test]
